@@ -12,6 +12,8 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/authelia/authelia/v4/internal/admin"
+
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -67,6 +69,8 @@ func Run(ctx Context, provisioners ...Provisioner) (err error) {
 		log.WithField("signal", s.String()).Debug("Shutdown initiated due to process signal")
 	case <-cctx.Done():
 		log.Debug("Shutdown initiated due to context completion")
+	case <-admin.RestartRequestedChannel():
+		log.Info("Restart requested by an administrator")
 	}
 
 	cancel()

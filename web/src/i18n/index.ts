@@ -162,7 +162,7 @@ i18n.use(Backend)
         load: "all",
         lowerCaseLng: false,
         nonExplicitSupportedLngs: true,
-        ns: ["consent", "portal", "settings"],
+        ns: ["admin", "consent", "portal", "settings"],
         supportedLngs: [
             "en",
             "af",

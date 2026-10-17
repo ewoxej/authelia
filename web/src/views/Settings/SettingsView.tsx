@@ -2,12 +2,24 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+import { useEffect } from "react";
+
 import { useTranslation } from "react-i18next";
 
+import { Button } from "@components/UI/Button";
 import { Card, CardContent } from "@components/UI/Card";
+import { AdminRoute } from "@constants/Routes";
+import { useConfiguration } from "@hooks/Configuration";
+import { useRouterNavigate } from "@hooks/RouterNavigate";
 
 const SettingsView = function () {
-    const { t: translate } = useTranslation("settings");
+    const { t: translate } = useTranslation(["settings", "admin"]);
+    const navigate = useRouterNavigate();
+    const [configuration, fetchConfiguration] = useConfiguration();
+
+    useEffect(() => {
+        fetchConfiguration();
+    }, [fetchConfiguration]);
 
     return (
         <Card>
@@ -21,6 +33,13 @@ const SettingsView = function () {
                 <p className="text-center my-2">
                     {translate("To view the currently available options select the menu icon at the top left")}
                 </p>
+                {configuration?.administrator ? (
+                    <div className="flex justify-center mt-4">
+                        <Button id="administration-button" onClick={() => navigate(AdminRoute)}>
+                            {translate("Administration", { ns: "admin" })}
+                        </Button>
+                    </div>
+                ) : null}
             </CardContent>
         </Card>
     );

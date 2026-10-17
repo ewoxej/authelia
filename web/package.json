@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "@base-ui/react": "1.8.0",
+    "@fontsource/ibm-plex-mono": "5.2.6",
+    "@fontsource/ibm-plex-sans": "5.2.6",
     "@simplewebauthn/browser": "14.0.0",
     "axios": "1.20.0",
     "broadcast-channel": "7.4.0",
@@ -29,6 +31,7 @@
   "scripts": {
     "prepare": "lefthook install",
     "start": "vite --host",
+    "start:admin": "vite --host 127.0.0.1 --port 3010 --strictPort --mode admin-dev",
     "build": "vite build",
     "coverage": "VITE_COVERAGE=true vite build",
     "lint": "eslint --format visualstudio --no-warn-ignored --fix",

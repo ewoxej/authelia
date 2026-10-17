@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "admin-dev",
+      "runtimeExecutable": "./dev/admin/run.sh",
+      "port": 3010,
+      "autoPort": false
+    }
+  ]
+}

@@ -105,6 +105,12 @@ export default defineConfig(({ mode }) => {
             allowedHosts: ["login.example.com", ...allowedHosts],
             open: false,
             port: 3000,
+            proxy: env.VITE_DEV_BACKEND
+                ? {
+                      "/api": { changeOrigin: false, target: env.VITE_DEV_BACKEND },
+                      "/locales": { changeOrigin: false, target: env.VITE_DEV_BACKEND },
+                  }
+                : undefined,
             watch: {
                 ignored: ["**/node_modules/**", "**/dist/**", "**/.*/**"],
             },

@@ -68,6 +68,7 @@ func NewCmdCtxConfig() *CmdCtxConfig {
 type CmdCtxConfig struct {
 	files     []string
 	filters   []string
+	bfilters  []configuration.BytesFilter
 	defaults  []configuration.Source
 	sources   []configuration.Source
 	keys      []string
@@ -434,6 +435,7 @@ func (ctx *CmdCtx) HelperConfigLoadRunE(cmd *cobra.Command, _ []string) (err err
 		return err
 	}
 
+	ctx.cconfig.bfilters = filters
 	ctx.cconfig.filters = make([]string, len(filters))
 
 	for i, filter := range filters {

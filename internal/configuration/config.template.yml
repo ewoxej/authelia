@@ -1001,6 +1001,21 @@ session:
   # ban_time: '5 minutes'
 
 ##
+## Administration Configuration
+##
+## The administration web UI available at '/admin' allows members of the administrator group to manage users, second
+## factors, bans, consents and the configuration files. It requires two-factor authentication and identity verification.
+# administration:
+  ## Enables the administration web UI and API.
+  # enabled: false
+
+  ## The group whose members are allowed to use the administration web UI.
+  # admin_group: 'admins'
+
+  ## Prevents the administration web UI from restarting Authelia after configuration changes.
+  # disable_restart: false
+
+##
 ## Storage Provider Configuration
 ##
 ## The available providers are: `local`, `mysql`, `postgres`. You must use one and only one of these providers.

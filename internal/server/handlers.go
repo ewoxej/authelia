@@ -22,6 +22,7 @@ import (
 	"github.com/valyala/fasthttp/fasthttpadaptor"
 	"github.com/valyala/fasthttp/pprofhandler"
 
+	"github.com/authelia/authelia/v4/internal/admin"
 	"github.com/authelia/authelia/v4/internal/configuration/schema"
 	"github.com/authelia/authelia/v4/internal/duo"
 	"github.com/authelia/authelia/v4/internal/handlers"
@@ -223,6 +224,56 @@ func handlerMain(config *schema.Configuration, providers middlewares.Providers) 
 	r.GET("/api/configuration", middleware1FA(handlers.ConfigurationGET))
 
 	r.GET("/api/configuration/password-policy", middlewareAPI(handlers.PasswordPolicyConfigurationGET))
+
+	if config.Administration.Enabled {
+		adminBuilder := middlewares.NewBridgeBuilder(*config, providers).
+			WithPreMiddlewares(middlewares.SecurityHeadersBase, middlewares.SecurityHeadersNoStore, middlewares.SecurityHeadersCSPNone)
+
+		switch devNoAuth, err := admin.DevNoAuth(config); {
+		case err != nil:
+			logging.Logger().WithError(err).Error("Administration API authentication can't be disabled")
+			adminBuilder = adminBuilder.WithPostMiddlewares(middlewares.RequireAdmin, middlewares.RequireElevated)
+		case devNoAuth:
+			logging.Logger().Warn("===> The administration API authentication is DISABLED for development. Never use this outside of a development environment. <===")
+		default:
+			adminBuilder = adminBuilder.WithPostMiddlewares(middlewares.RequireAdmin, middlewares.RequireElevated)
+		}
+
+		middlewareAdmin := adminBuilder.Build()
+
+		r.GET("/api/admin/overview", middlewareAdmin(handlers.AdminOverviewGET))
+		r.POST("/api/admin/restart", middlewareAdmin(handlers.AdminRestartPOST))
+		r.GET("/api/admin/stats", middlewareAdmin(handlers.AdminStatsGET))
+
+		r.GET("/api/admin/users", middlewareAdmin(handlers.AdminUsersGET))
+		r.POST("/api/admin/users", middlewareAdmin(handlers.AdminUserPOST))
+		r.GET("/api/admin/users/{username}", middlewareAdmin(handlers.AdminUserGET))
+		r.PUT("/api/admin/users/{username}", middlewareAdmin(handlers.AdminUserPUT))
+		r.DELETE("/api/admin/users/{username}", middlewareAdmin(handlers.AdminUserDELETE))
+		r.POST("/api/admin/users/{username}/password", middlewareAdmin(handlers.AdminUserPasswordPOST))
+		r.POST("/api/admin/users/{username}/ban", middlewareAdmin(handlers.AdminUserBanPOST))
+		r.DELETE("/api/admin/users/{username}/totp", middlewareAdmin(handlers.AdminUserTOTPDELETE))
+		r.DELETE("/api/admin/users/{username}/duo", middlewareAdmin(handlers.AdminUserDuoDELETE))
+		r.DELETE("/api/admin/users/{username}/webauthn/{id}", middlewareAdmin(handlers.AdminUserWebAuthnDELETE))
+
+		r.GET("/api/admin/bans", middlewareAdmin(handlers.AdminBansGET))
+		r.DELETE("/api/admin/bans/users/{id}", middlewareAdmin(handlers.AdminBanUserDELETE))
+		r.DELETE("/api/admin/bans/ips/{id}", middlewareAdmin(handlers.AdminBanIPDELETE))
+		r.POST("/api/admin/bans/ips", middlewareAdmin(handlers.AdminBanIPPOST))
+
+		r.GET("/api/admin/logs", middlewareAdmin(handlers.AdminAuthenticationLogsGET))
+
+		r.GET("/api/admin/consents", middlewareAdmin(handlers.AdminConsentsGET))
+		r.DELETE("/api/admin/consents/{id}", middlewareAdmin(handlers.AdminConsentDELETE))
+
+		r.GET("/api/admin/configuration/file", middlewareAdmin(handlers.AdminConfigurationFileGET))
+		r.PUT("/api/admin/configuration/file", middlewareAdmin(handlers.AdminConfigurationFilePUT))
+		r.POST("/api/admin/configuration/validate", middlewareAdmin(handlers.AdminConfigurationValidatePOST))
+		r.GET("/api/admin/configuration/sections/text", middlewareAdmin(handlers.AdminConfigurationSectionsTextGET))
+		r.PUT("/api/admin/configuration/sections/text", middlewareAdmin(handlers.AdminConfigurationSectionsTextPUT))
+		r.GET("/api/admin/configuration/section/{section}", middlewareAdmin(handlers.AdminConfigurationSectionGET))
+		r.PUT("/api/admin/configuration/sections", middlewareAdmin(handlers.AdminConfigurationSectionsPUT))
+	}
 
 	metricsVRMW := middlewares.NewMetricsAuthzRequest(providers.Metrics)
 

@@ -27,6 +27,7 @@ type configurationBody struct {
 	AvailableMethods       MethodList `json:"available_methods"`
 	PasswordChangeDisabled bool       `json:"password_change_disabled"`
 	PasswordResetDisabled  bool       `json:"password_reset_disabled"`
+	Administrator          bool       `json:"administrator"`
 }
 
 type bodySignTOTPRequest struct {
