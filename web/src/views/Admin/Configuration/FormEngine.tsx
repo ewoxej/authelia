@@ -2,12 +2,29 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { KeyboardEvent, ReactNode, useId, useState } from "react";
+import { Fragment, KeyboardEvent, ReactNode, useId, useState } from "react";
 
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Trash2, X } from "lucide-react";
+import {
+    ArrowDown,
+    ArrowUp,
+    ChevronDown,
+    ChevronRight,
+    FileKey,
+    FolderOpen,
+    LucideIcon,
+    Plus,
+    RotateCcw,
+    Trash2,
+    Type,
+    X,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { Badge, BadgeTone, Btn, Card, CardHeader, IconBtn, Key, Note, Seg, Toggle, cx } from "@views/Admin/Common/ui";
+import { useAdmin } from "@views/Admin/Common/AdminContext";
+import ConfirmDialog from "@views/Admin/Common/ConfirmDialog";
+import FileBrowserDialog, { FileBrowserMode } from "@views/Admin/Common/FileBrowserDialog";
+import { Badge, BadgeTone, Btn, Card, CardHeader, IconBtn, Note, Seg, Toggle, cx } from "@views/Admin/Common/ui";
+import { DurationInput, DurationSpecial } from "@views/Admin/Configuration/DurationInput";
 
 export type Value = Record<string, unknown>;
 
@@ -22,17 +39,54 @@ interface BaseField {
     wide?: boolean;
 }
 
+/** A boolean in the configuration which switches a group on or off. With invert the group is on while it's false or unset. */
+export interface ToggleDef {
+    path: string;
+    invert?: boolean;
+    // A second boolean which must be on too. Turning the group on turns it on as well, turning the group off leaves it.
+    also?: { path: string; invert?: boolean };
+}
+
+const isOn = (value: Value, def: { path: string; invert?: boolean }) =>
+    def.invert ? getPath(value, def.path) !== true : getPath(value, def.path) === true;
+
+const setOn = (value: Value, def: { path: string; invert?: boolean }, on: boolean) =>
+    setPath(value, def.path, def.invert ? (on ? undefined : true) : on);
+
+export interface TabDef {
+    value: string;
+    label: string;
+    fields: FieldDef[];
+}
+
+export interface HeadingPart {
+    text: string;
+    key?: boolean;
+    tone?: BadgeTone;
+}
+
 export type FieldDef =
+    | {
+          // Chooses a value for path, each choice has its own fields shown in the tab.
+          kind: "tabs";
+          path: string;
+          label: string;
+          description?: string;
+          defaultValue?: string;
+          tabs: TabDef[];
+      }
     | {
           kind: "array";
           path: string;
           label: string;
           description?: string;
           addLabel?: string;
+          splitDurations?: boolean;
           itemTitle: (_item: Value, _index: number) => string;
           itemBadge?: (_item: Value) => { label: string; tone: BadgeTone } | undefined;
           itemMeta?: (_item: Value) => string | undefined;
-          itemSummary?: (_item: Value, _translate: Translate) => ReactNode;
+          // A sentence replacing the badge and the title, parts flagged `key` are highlighted.
+          itemHeading?: (_item: Value, _translate: Translate) => HeadingPart[];
           fields: FieldDef[];
           newItem: () => Value;
       }
@@ -45,15 +99,45 @@ export type FieldDef =
           // When set the group can be switched off, which removes this path from the configuration.
           togglePath?: string;
           offNote?: string;
+          // Another group which can't be used together with this one. Turning this group on asks for a
+          // confirmation, then removes the other group.
+          replaces?: { path: string; label: string }[];
+          // The group is switched by a boolean value instead of by the presence of togglePath.
+          toggle?: ToggleDef;
           fields: FieldDef[];
       }
-    | (BaseField & { kind: "bool"; text?: string })
-    | (BaseField & { kind: "list" })
+    // With invert the switch is on while the value is false or unset, for options named 'disable_*'.
+    | (BaseField & { kind: "bool"; invert?: boolean })
+    // With choices the values are picked from the pills instead of typed.
+    | (BaseField & {
+          kind: "duration";
+          min: number;
+          max: number;
+          defaultValue?: string;
+          // Values which aren't durations, i.e. '-1' or 'always'.
+          specials?: DurationSpecial[];
+      })
+    // A logarithmic slider between min and max seconds, which snaps to round values and writes i.e. '5m'.
+    | (BaseField & { kind: "list"; choices?: string[] })
     | (BaseField & { kind: "number"; min?: number; max?: number })
+    // The value is a secret which can be read from a file with a template expression.
     | (BaseField & { kind: "password" })
-    | (BaseField & { kind: "select"; options: string[]; defaultValue?: string; display?: "seg" })
-    | (BaseField & { kind: "text" })
-    | (BaseField & { kind: "textarea" });
+    | (BaseField & {
+          kind: "select";
+          options: string[];
+          defaultValue?: string;
+          // Short lists of up to three options are shown as a segmented control unless 'select' is set.
+          display?: "seg" | "select";
+          // Shown in the segmented control in place of the option values.
+          optionLabels?: Record<string, string>;
+          // CSS backgrounds of the swatches shown before the option labels, i.e. theme colors.
+          optionSwatches?: Record<string, string>;
+          optionIcons?: Record<string, LucideIcon>;
+      })
+    // With picker a button opens the file picker of the server to fill in a path.
+    | (BaseField & { kind: "text"; picker?: FileBrowserMode })
+    // With secret the value can be read from a file.
+    | (BaseField & { kind: "textarea"; secret?: boolean });
 
 export interface SectionDef {
     id: string;
@@ -64,6 +148,12 @@ export interface SectionDef {
     // The title and description of the card holding the fields which aren't in a group or array.
     mainTitle?: string;
     mainDescription?: string;
+    // Cards which sit side by side in a row, by group or array label. The fields which aren't in a group are 'main'.
+    columns?: string[][];
+    // Puts the durations in a column on the right and the other fields in one on the left.
+    splitDurations?: boolean;
+    // Picks which one of several groups is used, by group label. Only the chosen group is shown, without its header.
+    choose?: { label: string; groups: string[] };
     fields: FieldDef[];
 }
 
@@ -115,6 +205,32 @@ const asString = (value: unknown): string | undefined => {
     return String(value as boolean | number | string);
 };
 
+const reSecretCall = /secret\s+"(?:[^"\\]|\\.)*"/;
+
+/** The expression which reads a secret from a file. A path replaces the one in an existing expression, keeping its functions. */
+// The indentation of mindent is worked out when the configuration is written, from the position of the key.
+const secretExpression = (path: string, existing: string | undefined) =>
+    existing && reSecretCall.test(existing)
+        ? existing.replace(reSecretCall, `secret ${JSON.stringify(path)}`)
+        : `{{ secret ${JSON.stringify(path)} | mindent auto "|" | msquote }}`;
+
+const reSecretOnly = /^\{\{\s*secret\s+("(?:[^"\\]|\\.)*")[^}]*\}\}$/;
+
+/** The path of the file when the whole value is a template expression which reads a secret from a file. */
+const secretFilePath = (value: string | undefined) => {
+    const match = value ? reSecretOnly.exec(value.trim()) : null;
+
+    if (!match) {
+        return undefined;
+    }
+
+    try {
+        return JSON.parse(match[1]) as string;
+    } catch {
+        return undefined;
+    }
+};
+
 const isTemplate = (value: unknown) => typeof value === "string" && value.includes("{{");
 
 const isStringList = (value: unknown): value is string[] =>
@@ -148,10 +264,87 @@ interface RenderProps {
     disabled?: boolean;
 }
 
-const shownKey = (prefix: string, path: string) =>
-    prefix && path.startsWith(prefix + ".") ? path.slice(prefix.length + 1) : path;
-
 const fieldKey = (field: FieldDef) => `${field.kind}-${"path" in field ? field.path : field.label}`;
+
+/** Lays out fields in a grid, or with the durations on the right when asked to and there are both kinds. */
+const FieldGrid = function (props: {
+    fields: FieldDef[];
+    split?: boolean;
+    className?: string;
+    // Shown above the fields in the left column and centres the right column against both.
+    lead?: ReactNode;
+    render: (_field: FieldDef) => ReactNode;
+}) {
+    const times = props.fields.filter((f) => f.kind === "duration");
+    const others = props.fields.filter((f) => f.kind !== "duration");
+
+    if (props.split && times.length !== 0 && others.length !== 0) {
+        return (
+            <div className={cx("split", props.lead ? "centered" : undefined, props.className)}>
+                <div className="split-col">
+                    {props.lead}
+                    {others.map(props.render)}
+                </div>
+                <div className="split-col">{times.map(props.render)}</div>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            {props.lead}
+            <div className={cx("grid2", props.className)}>{props.fields.map(props.render)}</div>
+        </>
+    );
+};
+
+type GroupDef = Extract<FieldDef, { kind: "group" }>;
+
+/** Picks one of several mutually exclusive groups, removing the others from the configuration. */
+const ChooseGroup = function (props: RenderProps & { label: string; groups: GroupDef[] }) {
+    const { t: translate } = useTranslation("admin");
+    const { groups, value } = props;
+
+    const selected = groups.find((g) => g.togglePath && getPath(value, g.togglePath) !== undefined);
+
+    const apply = (target: GroupDef) => {
+        const cleared = groups
+            .filter((g) => g !== target && g.togglePath)
+            .reduce((v, g) => setPath(v, g.togglePath ?? "", undefined), value);
+
+        props.onChange(
+            getPath(cleared, target.togglePath ?? "") === undefined
+                ? setPath(cleared, target.togglePath ?? "", {})
+                : cleared,
+        );
+    };
+
+    const handleChoose = (label: string) => {
+        const target = groups.find((g) => g.label === label);
+
+        if (!target || target === selected) {
+            return;
+        }
+
+        apply(target);
+    };
+
+    return (
+        <div className="fld inline beside">
+            <div className="fld-head">
+                <span className="fld-title">
+                    <span className="fld-label">{translate(props.label)}</span>
+                </span>
+            </div>
+            <Seg
+                label={translate(props.label)}
+                value={selected?.label ?? ""}
+                options={groups.map((g) => ({ label: translate(g.label), value: g.label }))}
+                onChange={handleChoose}
+            />
+        </div>
+    );
+};
 
 /** Renders the fields of a section: loose fields in a main card, groups and arrays in their own cards. */
 export const SectionForm = function (props: { section: SectionDef } & Omit<RenderProps, "keyPrefix">) {
@@ -162,87 +355,225 @@ export const SectionForm = function (props: { section: SectionDef } & Omit<Rende
     const loose = section.fields.filter((f) => f.kind !== "group" && f.kind !== "array");
     const render = { ...props, keyPrefix };
 
-    return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {loose.length ? (
-                <Card>
-                    <CardHeader
-                        title={translate(section.mainTitle ?? "Settings")}
-                        subtitle={section.mainDescription ? translate(section.mainDescription) : undefined}
-                        style={{ alignItems: "flex-start", marginBottom: 18 }}
+    const choice = section.choose
+        ? section.fields.filter(
+              (f): f is GroupDef => f.kind === "group" && (section.choose?.groups.includes(f.label) ?? false),
+          )
+        : [];
+    const chosen = choice.find((g) => g.togglePath && getPath(props.value, g.togglePath) !== undefined);
+    const chooser =
+        section.choose && choice.length !== 0 ? (
+            <ChooseGroup {...render} label={section.choose.label} groups={choice} />
+        ) : null;
+
+    const main =
+        loose.length === 0 && !chooser ? null : section.mainTitle === "" ? (
+            <Card>
+                <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                    {chooser}
+                    {loose.length === 0 ? null : (
+                        <div className="grid2">
+                            {loose.map((field) => (
+                                <FieldRenderer key={fieldKey(field)} field={field} {...render} />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </Card>
+        ) : (
+            <Card>
+                <CardHeader
+                    title={translate(section.mainTitle ?? "Settings")}
+                    subtitle={section.mainDescription ? translate(section.mainDescription) : undefined}
+                    style={{ alignItems: "flex-start", marginBottom: 18 }}
+                />
+                <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                    {section.splitDurations ? null : chooser}
+                    <FieldGrid
+                        fields={loose}
+                        lead={section.splitDurations ? chooser : undefined}
+                        split={section.splitDurations}
+                        render={(field) => <FieldRenderer key={fieldKey(field)} field={field} {...render} />}
                     />
-                    <div className="grid2">
-                        {loose.map((field) => (
-                            <FieldRenderer key={fieldKey(field)} field={field} {...render} />
-                        ))}
-                    </div>
-                </Card>
-            ) : null}
-            {section.fields.map((field) => {
-                if (field.kind === "group") {
-                    return <GroupCard key={fieldKey(field)} field={field} {...render} />;
+                </div>
+            </Card>
+        );
+
+    // The cards in the order they appear, each with the name the layout refers to it by.
+    const items: { name: string; node: ReactNode }[] = [];
+
+    if (main) {
+        items.push({ name: "main", node: main });
+    }
+
+    for (const field of section.fields) {
+        if (field.kind === "group") {
+            if (choice.includes(field)) {
+                if (field === chosen) {
+                    items.push({
+                        name: field.label,
+                        node: <GroupCard key={fieldKey(field)} field={field} bare {...render} />,
+                    });
                 }
 
-                if (field.kind === "array") {
-                    return (
-                        <Card key={fieldKey(field)}>
-                            <ArrayEditor field={field} {...render} />
-                        </Card>
-                    );
-                }
+                continue;
+            }
 
-                return null;
-            })}
-        </div>
-    );
+            items.push({ name: field.label, node: <GroupCard key={fieldKey(field)} field={field} {...render} /> });
+        } else if (field.kind === "array") {
+            items.push({
+                name: field.label,
+                node: (
+                    <Card key={fieldKey(field)}>
+                        <ArrayEditor field={field} {...render} />
+                    </Card>
+                ),
+            });
+        }
+    }
+
+    const placed = new Set<string>();
+    const content: ReactNode[] = [];
+
+    for (const item of items) {
+        if (placed.has(item.name)) {
+            continue;
+        }
+
+        const row = section.columns?.find((names) => names.includes(item.name));
+
+        if (!row) {
+            placed.add(item.name);
+            content.push(<div key={item.name}>{item.node}</div>);
+
+            continue;
+        }
+
+        const members = row.flatMap((name) => items.filter((i) => i.name === name));
+
+        members.forEach((member) => placed.add(member.name));
+        content.push(
+            <div key={row.join("|")} className="cols2">
+                {members.map((member) => (
+                    <div key={member.name}>{member.node}</div>
+                ))}
+            </div>,
+        );
+    }
+
+    return <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>{content}</div>;
 };
 
-const GroupCard = function (props: RenderProps & { field: Extract<FieldDef, { kind: "group" }> }) {
+const GroupCard = function (props: RenderProps & { field: GroupDef; bare?: boolean }) {
     const { t: translate } = useTranslation("admin");
     const { field } = props;
+    const [confirmReplace, setConfirmReplace] = useState(false);
 
-    const toggled = field.togglePath ? getPath(props.value, field.togglePath) !== undefined : true;
-    const keyName = field.keyName ?? (field.togglePath ? shownKey(props.keyPrefix, field.togglePath) : undefined);
+    const toggle = field.toggle;
+    const hasToggle = toggle !== undefined || field.togglePath !== undefined;
+    const toggled = toggle
+        ? isOn(props.value, toggle) && (toggle.also ? isOn(props.value, toggle.also) : true)
+        : field.togglePath
+          ? getPath(props.value, field.togglePath) !== undefined
+          : true;
+    const replaced = (field.replaces ?? []).filter((other) => getPath(props.value, other.path) !== undefined);
+
+    const handleToggle = (on: boolean) => {
+        if (toggle) {
+            const next = setOn(props.value, toggle, on);
+
+            props.onChange(on && toggle.also ? setOn(next, toggle.also, true) : next);
+
+            return;
+        }
+
+        if (on && replaced.length !== 0) {
+            setConfirmReplace(true);
+
+            return;
+        }
+
+        props.onChange(setPath(props.value, field.togglePath ?? "", on ? {} : undefined));
+    };
+
+    if (props.bare) {
+        return (
+            <Card>
+                <div className="grid2">
+                    {field.fields.map((f) =>
+                        f.kind === "group" ? (
+                            <div key={fieldKey(f)} className="span2">
+                                <SubGroup {...props} field={f} />
+                            </div>
+                        ) : (
+                            <FieldRenderer key={fieldKey(f)} {...props} field={f} />
+                        ),
+                    )}
+                </div>
+            </Card>
+        );
+    }
 
     return (
         <Card>
+            {replaced.length !== 0 ? (
+                <ConfirmDialog
+                    open={confirmReplace}
+                    title={translate("Turn on {{name}}?", { name: translate(field.label) })}
+                    description={translate(
+                        "{{name}} can't be used together with {{other}}. Turning it on removes the {{other}} settings from the configuration when you save. Nothing is deleted from the disk, and Reset brings them back before saving.",
+                        {
+                            name: translate(field.label),
+                            other: replaced.map((other) => translate(other.label)).join(", "),
+                        },
+                    )}
+                    confirmLabel={translate("Turn on {{name}}", { name: translate(field.label) })}
+                    destructive
+                    onClose={() => setConfirmReplace(false)}
+                    onConfirm={() => {
+                        setConfirmReplace(false);
+                        props.onChange(
+                            setPath(
+                                replaced.reduce((value, other) => setPath(value, other.path, undefined), props.value),
+                                field.togglePath ?? "",
+                                {},
+                            ),
+                        );
+                    }}
+                />
+            ) : null}
             <CardHeader
                 title={
                     <div className="title-row" style={{ gap: 8 }}>
                         <h2>{translate(field.label)}</h2>
-                        {keyName ? <Key>{keyName}</Key> : null}
                     </div>
                 }
                 subtitle={field.description ? translate(field.description) : undefined}
                 style={{ alignItems: "flex-start", marginBottom: 18 }}
                 actions={
-                    field.togglePath ? (
-                        <Toggle
-                            checked={toggled}
-                            label={translate(field.label)}
-                            onChange={(on) =>
-                                props.onChange(setPath(props.value, field.togglePath ?? "", on ? {} : undefined))
-                            }
-                        />
+                    hasToggle ? (
+                        <Toggle checked={toggled} label={translate(field.label)} onChange={handleToggle} />
                     ) : undefined
                 }
             />
             {!toggled && field.offNote ? (
-                <div style={{ marginBottom: 18 }}>
+                <div>
                     <Note tone="warn">{translate(field.offNote)}</Note>
                 </div>
             ) : null}
-            <div className={cx("grid2", !toggled && "dim")}>
-                {field.fields.map((f) =>
-                    f.kind === "group" ? (
-                        <div key={fieldKey(f)} className="span2">
-                            <SubGroup {...props} field={f} disabled={!toggled} />
-                        </div>
-                    ) : (
-                        <FieldRenderer key={fieldKey(f)} {...props} field={f} disabled={!toggled} />
-                    ),
-                )}
-            </div>
+            {toggled && field.fields.length !== 0 ? (
+                <div className="grid2">
+                    {field.fields.map((f) =>
+                        f.kind === "group" ? (
+                            <div key={fieldKey(f)} className="span2">
+                                <SubGroup {...props} field={f} />
+                            </div>
+                        ) : (
+                            <FieldRenderer key={fieldKey(f)} {...props} field={f} />
+                        ),
+                    )}
+                </div>
+            ) : null}
         </Card>
     );
 };
@@ -273,6 +604,60 @@ const SubGroup = function (props: RenderProps & { field: Extract<FieldDef, { kin
     );
 };
 
+/** Tabs, one per choice of a value, showing the fields of the choice. The configured choice is marked. */
+const TabsField = function (props: RenderProps & { field: Extract<FieldDef, { kind: "tabs" }> }) {
+    const { t: translate } = useTranslation("admin");
+    const { field, initial, onChange, value } = props;
+
+    const configured = asString(getPath(value, field.path)) ?? field.defaultValue;
+    const [viewed, setViewed] = useState(configured ?? field.tabs[0].value);
+    const tab = field.tabs.find((t) => t.value === viewed) ?? field.tabs[0];
+    const inUse = tab.value === configured;
+    const changed = !same(getPath(value, field.path), getPath(initial, field.path));
+
+    return (
+        <div className="fld">
+            <div className="fld-head" data-tip={field.description ? translate(field.description) : undefined}>
+                <span className="fld-label">{translate(field.label)}</span>
+            </div>
+            <div className={cx("tabs", changed && "changed")} role="tablist" aria-label={translate(field.label)}>
+                {field.tabs.map((t) => (
+                    <button
+                        key={t.value}
+                        type="button"
+                        role="tab"
+                        aria-selected={t.value === tab.value}
+                        className="tab"
+                        onClick={() => setViewed(t.value)}
+                    >
+                        {translate(t.label)}
+                        {t.value === configured ? <span className="dot" title={translate("In use")} /> : null}
+                    </button>
+                ))}
+            </div>
+            <div className="tab-panel" role="tabpanel">
+                {inUse ? null : (
+                    <div className="tab-use">
+                        <span className="help">
+                            {translate("Not in use. New passwords are hashed with {{algorithm}}.", {
+                                algorithm: translate(field.tabs.find((t) => t.value === configured)?.label ?? ""),
+                            })}
+                        </span>
+                        <Btn size="sm" onClick={() => onChange(setPath(value, field.path, tab.value))}>
+                            {translate("Use {{algorithm}}", { algorithm: translate(tab.label) })}
+                        </Btn>
+                    </div>
+                )}
+                <div className="grid2">
+                    {tab.fields.map((f) => (
+                        <FieldRenderer key={fieldKey(f)} {...props} field={f} />
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const FieldShell = function (props: {
     id?: string;
     label: string;
@@ -280,20 +665,39 @@ const FieldShell = function (props: {
     keyPrefix: string;
     description?: string;
     wide?: boolean;
+    kind?: string;
+    // When set a reset button is shown next to the label which removes the value so the default applies.
+    onReset?: () => void;
     children: ReactNode;
 }) {
     const { t: translate } = useTranslation("admin");
 
     return (
-        <div className={cx("fld", props.wide && "span2")}>
+        <div
+            className={cx("fld", "inline", props.kind && `k-${props.kind}`, props.wide && "span2")}
+            data-tip={props.description ? translate(props.description) : undefined}
+        >
             <div className="fld-head">
-                <label className="fld-label" htmlFor={props.id}>
-                    {translate(props.label)}
-                </label>
-                <span className="fld-key">{shownKey(props.keyPrefix, props.path)}</span>
+                <span className="fld-title">
+                    <label className="fld-label" htmlFor={props.id}>
+                        {translate(props.label)}
+                    </label>
+                    {props.onReset ? (
+                        <button
+                            type="button"
+                            className="fld-reset"
+                            title={translate("Reset to the default")}
+                            aria-label={translate("Reset {{label}} to the default", {
+                                label: translate(props.label),
+                            })}
+                            onClick={props.onReset}
+                        >
+                            <RotateCcw size={12} strokeWidth={2} aria-hidden />
+                        </button>
+                    ) : null}
+                </span>
             </div>
             {props.children}
-            {props.description ? <span className="help">{translate(props.description)}</span> : null}
         </div>
     );
 };
@@ -301,6 +705,8 @@ const FieldShell = function (props: {
 export const FieldRenderer = function (props: RenderProps & { field: FieldDef }) {
     const { t: translate } = useTranslation("admin");
     const id = useId();
+    const { overview } = useAdmin();
+    const [browsing, setBrowsing] = useState(false);
     const { disabled, field, initial, onChange, value } = props;
 
     if (field.kind === "group") {
@@ -315,9 +721,19 @@ export const FieldRenderer = function (props: RenderProps & { field: FieldDef })
         );
     }
 
+    if (field.kind === "tabs") {
+        return (
+            <div className="span2">
+                <TabsField {...props} field={field} />
+            </div>
+        );
+    }
+
     const current = getPath(value, field.path);
     const changed = !same(current, getPath(initial, field.path));
     const set = (v: unknown) => onChange(setPath(value, field.path, v));
+
+    const resettable = (field.kind === "select" || field.kind === "duration") && current !== undefined && !disabled;
 
     const shell = (children: ReactNode, wide = field.wide) => (
         <FieldShell
@@ -327,123 +743,96 @@ export const FieldRenderer = function (props: RenderProps & { field: FieldDef })
             keyPrefix={props.keyPrefix}
             description={field.description}
             wide={wide}
+            kind={field.kind}
+            onReset={resettable ? () => set(undefined) : undefined}
         >
             {children}
         </FieldShell>
     );
 
-    switch (field.kind) {
-        case "bool":
-            return shell(
-                <div className={cx("inline-box", changed && "changed")}>
-                    <span style={{ color: "var(--a-tx2)", flex: 1, fontSize: 13 }}>
-                        {translate(field.text ?? "Enabled")}
-                    </span>
-                    <Toggle
-                        id={id}
-                        checked={current === true}
-                        label={translate(field.label)}
-                        disabled={disabled}
-                        onChange={set}
-                    />
-                </div>,
-            );
-        case "number":
-            return shell(
-                <input
-                    id={id}
-                    className={cx("inp mono", changed && "changed")}
-                    type="number"
-                    min={field.min}
-                    max={field.max}
-                    placeholder={field.placeholder}
-                    disabled={disabled}
-                    value={asString(current) ?? ""}
-                    onChange={(e) => set(e.target.value === "" ? undefined : Number(e.target.value))}
-                />,
-            );
-        case "select": {
-            const text = asString(current);
+    // Secrets are read from a file with a template expression, which needs the template filter.
+    const secretFiles =
+        (field.kind === "password" || (field.kind === "textarea" && field.secret)) &&
+        (overview.configuration_filters ?? []).includes("template");
+    const pickerMode: FileBrowserMode | undefined =
+        field.kind === "text" ? field.picker : secretFiles ? "file" : undefined;
+    const currentText = asString(current);
+    const secretPath = secretFiles ? secretFilePath(currentText) : undefined;
+    const pickerValue = secretFiles ? (secretPath ?? /secret\s+"([^"]+)"/.exec(currentText ?? "")?.[1]) : currentText;
 
-            if (field.display === "seg") {
-                return shell(
-                    <div style={{ alignSelf: "flex-start" }}>
-                        <Seg
-                            label={translate(field.label)}
-                            value={text ?? field.defaultValue ?? ""}
-                            options={field.options.map((o) => ({ label: o, value: o }))}
-                            onChange={set}
+    const pickerDialog = pickerMode ? (
+        <FileBrowserDialog
+            open={browsing}
+            mode={pickerMode}
+            title={secretFiles ? "Choose the file with the secret" : field.label}
+            value={pickerValue}
+            generateSecret={secretFiles ? `${field.path.split(".").pop()}.txt` : undefined}
+            onClose={() => setBrowsing(false)}
+            onSelect={(path) => {
+                setBrowsing(false);
+                set(secretFiles ? secretExpression(path, currentText) : path);
+            }}
+        />
+    ) : null;
+
+    const withButton = (input: ReactNode) => {
+        if (!pickerMode) {
+            return input;
+        }
+
+        // A secret read from a file shows the path of the file, which is changed by picking another file.
+        if (secretPath !== undefined) {
+            return (
+                <div className="field-with-button">
+                    <div style={{ position: "relative" }}>
+                        <input
+                            id={id}
+                            readOnly
+                            className={cx("inp mono", changed && "changed")}
+                            value={secretPath.split("/").pop() || secretPath}
+                            title={`${secretPath}\n${translate("Choose another file")}`}
+                            disabled={disabled}
+                            style={{ cursor: "pointer", paddingRight: 64 }}
+                            onClick={() => setBrowsing(true)}
                         />
-                    </div>,
-                );
-            }
-
-            return shell(
-                <div className="sel">
-                    <select
-                        id={id}
-                        className={cx("inp", !text && "is-default", changed && "changed")}
-                        disabled={disabled}
-                        value={text ?? ""}
-                        onChange={(e) => set(e.target.value === "" ? undefined : e.target.value)}
-                    >
-                        <option value="">
-                            {field.defaultValue
-                                ? translate("Default ({{value}})", { value: field.defaultValue })
-                                : translate("(default)")}
-                        </option>
-                        {field.options.map((o) => (
-                            <option key={o} value={o}>
-                                {o}
-                            </option>
-                        ))}
-                        {text && !field.options.includes(text) ? <option value={text}>{text}</option> : null}
-                    </select>
-                    <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
-                </div>,
+                        <span style={{ position: "absolute", right: 8, top: 9 }}>
+                            <Badge tone="accent">{translate("file")}</Badge>
+                        </span>
+                    </div>
+                    <Btn disabled={disabled} onClick={() => set(undefined)}>
+                        <Type size={14} strokeWidth={1.75} aria-hidden />
+                        {translate("From text")}
+                    </Btn>
+                    {pickerDialog}
+                </div>
             );
         }
-        case "list":
-            if (current !== undefined && typeof current !== "string" && !isStringList(current)) {
-                return shell(<ComplexValue value={current} />, true);
-            }
 
-            return shell(
-                <TagInput
-                    id={id}
-                    values={typeof current === "string" ? [current] : ((current as string[] | undefined) ?? [])}
-                    placeholder={field.placeholder ? translate(field.placeholder) : translate("Add a value")}
-                    changed={changed}
-                    disabled={disabled}
-                    onChange={(v) => set(v.length === 0 ? undefined : v)}
-                />,
-            );
-        case "textarea":
-            if (current !== undefined && current !== null && typeof current === "object") {
-                return shell(<ComplexValue value={current} />, true);
-            }
+        return (
+            <div className="field-with-button">
+                {input}
+                <Btn disabled={disabled} onClick={() => setBrowsing(true)}>
+                    {secretFiles ? (
+                        <FileKey size={14} strokeWidth={1.75} aria-hidden />
+                    ) : (
+                        <FolderOpen size={14} strokeWidth={1.75} aria-hidden />
+                    )}
+                    {translate(secretFiles ? "From file" : "Browse")}
+                </Btn>
+                {pickerDialog}
+            </div>
+        );
+    };
 
-            return shell(
-                <textarea
-                    id={id}
-                    spellCheck={false}
-                    rows={Math.min(12, Math.max(3, (asString(current) ?? "").split("\n").length + 1))}
-                    className={cx("inp mono", changed && "changed")}
-                    placeholder={field.placeholder}
-                    disabled={disabled}
-                    value={asString(current) ?? ""}
-                    onChange={(e) => set(e.target.value === "" ? undefined : e.target.value)}
-                />,
-                true,
-            );
-        default: {
-            if (current !== undefined && current !== null && typeof current === "object") {
-                return shell(<ComplexValue value={current} />, true);
-            }
+    const textField = () => {
+        if (current !== undefined && current !== null && typeof current === "object") {
+            return shell(<ComplexValue value={current} />, true);
+        }
 
-            const template = isTemplate(current);
+        const template = isTemplate(current);
 
-            return shell(
+        return shell(
+            withButton(
                 <div style={{ position: "relative" }}>
                     <input
                         id={id}
@@ -463,8 +852,184 @@ export const FieldRenderer = function (props: RenderProps & { field: FieldDef })
                         </span>
                     ) : null}
                 </div>,
+            ),
+        );
+    };
+
+    switch (field.kind) {
+        case "bool":
+            return (
+                <div
+                    className={cx("fld", field.wide && "span2")}
+                    data-tip={field.description ? translate(field.description) : undefined}
+                >
+                    <div className={cx("toggle-row", changed && "changed")}>
+                        <label className="fld-label" htmlFor={id}>
+                            {translate(field.label)}
+                        </label>
+                        <Toggle
+                            id={id}
+                            checked={field.invert ? current !== true : current === true}
+                            label={translate(field.label)}
+                            disabled={disabled}
+                            onChange={(on) => set(field.invert ? (on ? undefined : true) : on)}
+                        />
+                    </div>
+                </div>
+            );
+        case "number":
+            return shell(
+                <input
+                    id={id}
+                    className={cx("inp mono", changed && "changed")}
+                    type="number"
+                    min={field.min}
+                    max={field.max}
+                    placeholder={field.placeholder}
+                    disabled={disabled}
+                    value={asString(current) ?? ""}
+                    onChange={(e) => set(e.target.value === "" ? undefined : Number(e.target.value))}
+                />,
+            );
+        case "select": {
+            const text = asString(current);
+            const effective = text ?? field.defaultValue;
+
+            const asSeg =
+                field.display === "seg" ||
+                (field.display === undefined &&
+                    field.options.length <= 3 &&
+                    (effective === undefined || field.options.includes(effective)));
+
+            if (asSeg) {
+                return shell(
+                    <div style={{ alignSelf: "flex-start" }}>
+                        <Seg
+                            label={translate(field.label)}
+                            className={cx(
+                                (field.optionIcons || field.optionSwatches) && "tiles",
+                                text === undefined && "is-default",
+                                changed && "changed",
+                            )}
+                            value={effective ?? ""}
+                            options={field.options.map((o) => {
+                                const Icon = field.optionIcons?.[o];
+                                const swatch = field.optionSwatches?.[o];
+
+                                return {
+                                    label: (
+                                        <>
+                                            {swatch ? <span className="swatch" style={{ background: swatch }} /> : null}
+                                            {Icon ? <Icon size={17} strokeWidth={1.6} aria-hidden /> : null}
+                                            {field.optionLabels?.[o] ?? o}
+                                        </>
+                                    ),
+                                    value: o,
+                                };
+                            })}
+                            onChange={set}
+                        />
+                    </div>,
+                );
+            }
+
+            return shell(
+                <div className="sel">
+                    <select
+                        id={id}
+                        className={cx("inp", !text && "is-default", changed && "changed")}
+                        disabled={disabled}
+                        value={effective ?? ""}
+                        onChange={(e) => set(e.target.value)}
+                    >
+                        {effective === undefined ? (
+                            <option value="" disabled hidden>
+                                {translate("Not set")}
+                            </option>
+                        ) : null}
+                        {field.options.map((o) => (
+                            <option key={o} value={o}>
+                                {o}
+                            </option>
+                        ))}
+                        {effective && !field.options.includes(effective) ? (
+                            <option value={effective}>{effective}</option>
+                        ) : null}
+                    </select>
+                    <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
+                </div>,
             );
         }
+        case "list":
+            if (current !== undefined && typeof current !== "string" && !isStringList(current)) {
+                return shell(<ComplexValue value={current} />, true);
+            }
+
+            if (field.choices) {
+                return shell(
+                    <ChoiceInput
+                        id={id}
+                        choices={field.choices}
+                        label={translate(field.label)}
+                        values={typeof current === "string" ? [current] : ((current as string[] | undefined) ?? [])}
+                        changed={changed}
+                        disabled={disabled}
+                        onChange={(v) => set(v.length === 0 ? undefined : v)}
+                    />,
+                );
+            }
+
+            return shell(
+                <TagInput
+                    id={id}
+                    values={typeof current === "string" ? [current] : ((current as string[] | undefined) ?? [])}
+                    placeholder={field.placeholder ? translate(field.placeholder) : translate("Add a value")}
+                    changed={changed}
+                    disabled={disabled}
+                    onChange={(v) => set(v.length === 0 ? undefined : v)}
+                />,
+            );
+        case "textarea":
+            if (current !== undefined && current !== null && typeof current === "object") {
+                return shell(<ComplexValue value={current} />, true);
+            }
+
+            return shell(
+                withButton(
+                    <textarea
+                        id={id}
+                        spellCheck={false}
+                        rows={Math.min(12, Math.max(3, (asString(current) ?? "").split("\n").length + 1))}
+                        className={cx("inp mono", changed && "changed")}
+                        placeholder={field.placeholder}
+                        disabled={disabled}
+                        value={asString(current) ?? ""}
+                        onChange={(e) => set(e.target.value === "" ? undefined : e.target.value)}
+                    />,
+                ),
+                true,
+            );
+        case "duration":
+            if (!isTemplate(current) && (current === undefined || typeof current !== "object")) {
+                return shell(
+                    <DurationInput
+                        id={id}
+                        label={field.label}
+                        value={asString(current)}
+                        defaultValue={field.defaultValue}
+                        min={field.min}
+                        max={field.max}
+                        specials={field.specials}
+                        changed={changed}
+                        disabled={disabled}
+                        onChange={set}
+                    />,
+                );
+            }
+
+            return textField();
+        default:
+            return textField();
     }
 };
 
@@ -476,6 +1041,70 @@ const ComplexValue = function (props: { value: unknown }) {
             <pre className="complex">{JSON.stringify(props.value, null, 2)}</pre>
             <span className="help">{translate("This value is complex, edit it with the YAML editor.")}</span>
         </>
+    );
+};
+
+/** The picked values as removable tags followed by a plus button which lists the values still available. */
+const ChoiceInput = function (props: {
+    id?: string;
+    label: string;
+    choices: string[];
+    values: string[];
+    changed?: boolean;
+    disabled?: boolean;
+    onChange: (_values: string[]) => void;
+}) {
+    const { t: translate } = useTranslation("admin");
+    const [open, setOpen] = useState(false);
+
+    const available = props.choices.filter((choice) => !props.values.includes(choice));
+
+    return (
+        <div className="choice">
+            <div className="tag-input bare">
+                {props.values.map((item) => (
+                    <span key={item} className={cx("tag", props.changed && "changed")}>
+                        {item}
+                        <button
+                            type="button"
+                            aria-label={translate("Remove {{value}}", { value: item })}
+                            disabled={props.disabled}
+                            onClick={() => props.onChange(props.values.filter((v) => v !== item))}
+                        >
+                            <X size={12} strokeWidth={1.75} aria-hidden />
+                        </button>
+                    </span>
+                ))}
+                <button
+                    id={props.id}
+                    type="button"
+                    className="tag-add"
+                    aria-expanded={open}
+                    aria-label={translate("Add {{label}}", { label: props.label })}
+                    disabled={props.disabled || available.length === 0}
+                    onClick={() => setOpen(!open)}
+                >
+                    <Plus size={14} strokeWidth={2} aria-hidden />
+                </button>
+            </div>
+            {open && available.length !== 0 ? (
+                <div className="pills">
+                    {available.map((choice) => (
+                        <button
+                            key={choice}
+                            type="button"
+                            className="pill"
+                            onClick={() => {
+                                props.onChange(props.choices.filter((v) => v === choice || props.values.includes(v)));
+                                setOpen(false);
+                            }}
+                        >
+                            {choice}
+                        </button>
+                    ))}
+                </div>
+            ) : null}
+        </div>
     );
 };
 
@@ -515,8 +1144,8 @@ export const TagInput = function (props: {
     return (
         <div className={cx("tag-input", props.changed && "changed")}>
             {props.values.map((item) => (
-                <span key={item} className="tag">
-                    {item}
+                <span key={item} className="tag" title={item}>
+                    <span className="tag-text">{item}</span>
                     <button
                         type="button"
                         aria-label={translate("Remove {{value}}", { value: item })}
@@ -573,7 +1202,6 @@ const ArrayEditor = function (props: RenderProps & { field: Extract<FieldDef, { 
                     <div className="title-row" style={{ gap: 8 }}>
                         <h2>{translate(field.label)}</h2>
                         <Badge>{items.length}</Badge>
-                        <Key>{shownKey(props.keyPrefix, field.path)}</Key>
                     </div>
                 }
                 subtitle={field.description ? translate(field.description) : undefined}
@@ -596,6 +1224,7 @@ const ArrayEditor = function (props: RenderProps & { field: Extract<FieldDef, { 
                     const open = expanded === index;
                     const badge = field.itemBadge?.(itemValue);
                     const meta = field.itemMeta?.(itemValue);
+                    const heading = field.itemHeading?.(itemValue, translate);
 
                     return (
                         // eslint-disable-next-line @eslint-react/no-array-index-key
@@ -610,15 +1239,35 @@ const ArrayEditor = function (props: RenderProps & { field: Extract<FieldDef, { 
                                     <ChevronRight className="chev" size={16} strokeWidth={1.75} aria-hidden />
                                 </IconBtn>
                                 <span className="num">#{index + 1}</span>
-                                {badge ? (
-                                    <Badge tone={badge.tone} className="policy">
-                                        {badge.label}
-                                    </Badge>
-                                ) : null}
-                                <span className="dom">
-                                    {field.itemTitle(itemValue, index) || translate("new entry")}
-                                </span>
-                                {meta ? <span className="meta mono">{meta}</span> : null}
+                                {heading ? (
+                                    <span className="dom sentence">
+                                        {heading.map((part, i) => (
+                                            // eslint-disable-next-line @eslint-react/no-array-index-key
+                                            <Fragment key={i}>
+                                                {i === 0 ? "" : " "}
+                                                {part.key ? (
+                                                    <b className={cx("hl", part.tone && `tone-${part.tone}`)}>
+                                                        {part.text}
+                                                    </b>
+                                                ) : (
+                                                    part.text
+                                                )}
+                                            </Fragment>
+                                        ))}
+                                    </span>
+                                ) : (
+                                    <>
+                                        {badge ? (
+                                            <Badge tone={badge.tone} className="policy">
+                                                {badge.label}
+                                            </Badge>
+                                        ) : null}
+                                        <span className="dom">
+                                            {field.itemTitle(itemValue, index) || translate("new entry")}
+                                        </span>
+                                        {meta ? <span className="meta mono">{meta}</span> : null}
+                                    </>
+                                )}
                                 <div className="acts">
                                     <IconBtn
                                         aria-label={translate("Move up")}
@@ -647,8 +1296,11 @@ const ArrayEditor = function (props: RenderProps & { field: Extract<FieldDef, { 
                                 </div>
                             </div>
                             {open ? (
-                                <div className="row-b grid2">
-                                    {field.fields.map((f) => (
+                                <FieldGrid
+                                    className="row-b"
+                                    fields={field.fields}
+                                    split={field.splitDurations}
+                                    render={(f) => (
                                         <FieldRenderer
                                             key={fieldKey(f)}
                                             field={f}
@@ -657,13 +1309,8 @@ const ArrayEditor = function (props: RenderProps & { field: Extract<FieldDef, { 
                                             keyPrefix=""
                                             onChange={(v) => update(items.map((it, i) => (i === index ? v : it)))}
                                         />
-                                    ))}
-                                    {field.itemSummary ? (
-                                        <div className="span2">
-                                            <Note tone="info">{field.itemSummary(itemValue, translate)}</Note>
-                                        </div>
-                                    ) : null}
-                                </div>
+                                    )}
+                                />
                             ) : null}
                         </div>
                     );

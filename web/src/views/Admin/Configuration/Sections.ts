@@ -2,11 +2,64 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+import {
+    Ban,
+    BellRing,
+    CircleOff,
+    Fingerprint,
+    Hand,
+    KeyRound,
+    Lock,
+    ShieldCheck,
+    SkipForward,
+    Sparkles,
+    Timer,
+    Unlock,
+    Users,
+} from "lucide-react";
+
 import { BadgeTone } from "@views/Admin/Common/ui";
-import { FieldDef, SectionDef, Value } from "@views/Admin/Configuration/FormEngine";
+import { FieldDef, HeadingPart, SectionDef, TabDef, Value } from "@views/Admin/Configuration/FormEngine";
 
 const str = (value: unknown, fallback = "") =>
     typeof value === "string" ? value : Array.isArray(value) ? value.join(", ") : fallback;
+
+const minute = 60;
+const hour = 60 * minute;
+const day = 24 * hour;
+const week = 7 * day;
+const month = 30 * day;
+const year = 365 * day;
+
+const rememberMeOff = [{ label: "Off", value: "-1" }];
+
+const policyChoice: Extract<FieldDef, { kind: "select" }> extends infer T ? Omit<T & object, "label" | "path"> : never =
+    {
+        display: "seg",
+        kind: "select",
+        optionIcons: { bypass: Unlock, deny: Ban, one_factor: Lock, two_factor: ShieldCheck },
+        optionLabels: { bypass: "Bypass", deny: "Deny", one_factor: "One factor", two_factor: "Two factor" },
+        options: ["deny", "bypass", "one_factor", "two_factor"],
+    };
+
+const httpMethods = [
+    "GET",
+    "HEAD",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
+    "CONNECT",
+    "TRACE",
+    "PROPFIND",
+    "PROPPATCH",
+    "MKCOL",
+    "COPY",
+    "MOVE",
+    "LOCK",
+    "UNLOCK",
+];
 
 const accessControlRuleFields: FieldDef[] = [
     {
@@ -15,24 +68,39 @@ const accessControlRuleFields: FieldDef[] = [
         label: "Domains",
         path: "domain",
         placeholder: "app.example.com",
+        wide: true,
     },
-    { kind: "list", label: "Domain regular expressions", path: "domain_regex" },
-    { kind: "select", label: "Policy", options: ["two_factor", "one_factor", "bypass", "deny"], path: "policy" },
+    { kind: "list", label: "Domain regular expressions", path: "domain_regex", wide: true },
     {
         description: "Entries like 'user:john' or 'group:admins'. Any entry matching grants the rule.",
         kind: "list",
         label: "Subjects",
         path: "subject",
         placeholder: "group:admins",
+        wide: true,
     },
-    { description: "Network names or CIDR ranges.", kind: "list", label: "Networks", path: "networks" },
+    {
+        description: "Network names or CIDR ranges.",
+        kind: "list",
+        label: "Networks",
+        path: "networks",
+        wide: true,
+    },
     {
         description: "Regular expressions matching the request path.",
         kind: "list",
         label: "Resources",
         path: "resources",
+        wide: true,
     },
-    { description: "HTTP methods, i.e. GET, POST.", kind: "list", label: "Methods", path: "methods" },
+    { ...policyChoice, label: "Policy", path: "policy" },
+    {
+        choices: httpMethods,
+        description: "Leave all unselected to match every method.",
+        kind: "list",
+        label: "Methods",
+        path: "methods",
+    },
 ];
 
 const sessionCookieFields: FieldDef[] = [
@@ -41,9 +109,22 @@ const sessionCookieFields: FieldDef[] = [
     { kind: "text", label: "Default redirection URL", path: "default_redirection_url" },
     { kind: "text", label: "Cookie name", path: "name" },
     { kind: "select", label: "Same site", options: ["lax", "strict", "none"], path: "same_site" },
-    { kind: "text", label: "Inactivity", path: "inactivity", placeholder: "5 minutes" },
-    { kind: "text", label: "Expiration", path: "expiration", placeholder: "1 hour" },
-    { kind: "text", label: "Remember me", path: "remember_me", placeholder: "1 month" },
+    { kind: "duration", label: "Inactivity", max: day, min: 10, path: "inactivity" },
+    {
+        kind: "duration",
+        label: "Expiration",
+        max: week,
+        min: minute,
+        path: "expiration",
+    },
+    {
+        kind: "duration",
+        label: "Remember me",
+        max: year,
+        min: hour,
+        path: "remember_me",
+        specials: rememberMeOff,
+    },
 ];
 
 const oidcClientFields: FieldDef[] = [
@@ -63,31 +144,43 @@ const oidcClientFields: FieldDef[] = [
         path: "authorization_policy",
         placeholder: "two_factor",
     },
+    { kind: "bool", label: "Require PKCE", path: "require_pkce" },
     {
+        defaultValue: "auto",
+        display: "seg",
         kind: "select",
         label: "Consent mode",
+        optionIcons: { auto: Sparkles, explicit: Hand, implicit: SkipForward, "pre-configured": Timer },
+        optionLabels: { auto: "Auto", explicit: "Explicit", implicit: "Implicit", "pre-configured": "Pre-configured" },
         options: ["auto", "explicit", "implicit", "pre-configured"],
         path: "consent_mode",
     },
     {
-        kind: "text",
+        defaultValue: "1w",
+        kind: "duration",
         label: "Pre-configured consent duration",
+        max: year,
+        min: hour,
         path: "pre_configured_consent_duration",
-        placeholder: "1 week",
     },
-    { kind: "bool", label: "Require PKCE", path: "require_pkce" },
     { kind: "select", label: "PKCE challenge method", options: ["S256", "plain"], path: "pkce_challenge_method" },
-    { kind: "list", label: "Redirect URIs", path: "redirect_uris", placeholder: "https://app.example.com/callback" },
-    { kind: "list", label: "Scopes", path: "scopes", placeholder: "openid" },
-    { kind: "list", label: "Grant types", path: "grant_types", placeholder: "authorization_code" },
-    { kind: "list", label: "Response types", path: "response_types", placeholder: "code" },
-    { kind: "list", label: "Audience", path: "audience" },
     {
         kind: "select",
         label: "Token endpoint auth method",
         options: ["client_secret_basic", "client_secret_post", "client_secret_jwt", "private_key_jwt", "none"],
         path: "token_endpoint_auth_method",
     },
+    {
+        kind: "list",
+        label: "Redirect URIs",
+        path: "redirect_uris",
+        placeholder: "https://app.example.com/callback",
+        wide: true,
+    },
+    { kind: "list", label: "Scopes", path: "scopes", placeholder: "openid" },
+    { kind: "list", label: "Grant types", path: "grant_types", placeholder: "authorization_code" },
+    { kind: "list", label: "Response types", path: "response_types", placeholder: "code" },
+    { kind: "list", label: "Audience", path: "audience" },
     { kind: "text", label: "ID token signing algorithm", path: "id_token_signed_response_alg", placeholder: "RS256" },
     {
         kind: "text",
@@ -113,13 +206,14 @@ const oidcJWKFields: FieldDef[] = [
         kind: "textarea",
         label: "Key",
         path: "key",
+        secret: true,
     },
     { kind: "textarea", label: "Certificate chain", path: "certificate_chain" },
 ];
 
 const hash = (algorithm: string, option: string) => `authentication_backend.file.password.${algorithm}.${option}`;
 
-const passwordHashFields: FieldDef[] = [
+const passwordHashTabs: TabDef[] = [
     {
         fields: [
             {
@@ -134,8 +228,8 @@ const passwordHashFields: FieldDef[] = [
             { kind: "number", label: "Key length", min: 1, path: hash("argon2", "key_length"), placeholder: "32" },
             { kind: "number", label: "Salt length", min: 1, path: hash("argon2", "salt_length"), placeholder: "16" },
         ],
-        kind: "group",
         label: "Argon2",
+        value: "argon2",
     },
     {
         fields: [
@@ -149,8 +243,8 @@ const passwordHashFields: FieldDef[] = [
             },
             { kind: "number", label: "Salt length", min: 1, path: hash("sha2crypt", "salt_length"), placeholder: "16" },
         ],
-        kind: "group",
         label: "SHA2 Crypt",
+        value: "sha2crypt",
     },
     {
         fields: [
@@ -163,16 +257,16 @@ const passwordHashFields: FieldDef[] = [
             { kind: "number", label: "Iterations", min: 1, path: hash("pbkdf2", "iterations") },
             { kind: "number", label: "Salt length", min: 1, path: hash("pbkdf2", "salt_length") },
         ],
-        kind: "group",
         label: "PBKDF2",
+        value: "pbkdf2",
     },
     {
         fields: [
             { kind: "select", label: "Variant", options: ["standard", "sha256"], path: hash("bcrypt", "variant") },
             { kind: "number", label: "Cost", max: 31, min: 10, path: hash("bcrypt", "cost"), placeholder: "12" },
         ],
-        kind: "group",
         label: "bcrypt",
+        value: "bcrypt",
     },
     {
         fields: [
@@ -183,8 +277,8 @@ const passwordHashFields: FieldDef[] = [
             { kind: "number", label: "Key length", min: 1, path: hash("scrypt", "key_length") },
             { kind: "number", label: "Salt length", min: 1, path: hash("scrypt", "salt_length") },
         ],
-        kind: "group",
         label: "scrypt",
+        value: "scrypt",
     },
 ];
 
@@ -204,7 +298,7 @@ const list = (value: unknown): string[] =>
           ? [String(value)]
           : [];
 
-const accessRuleSummary = (item: Value, translate: (_key: string, _options?: Record<string, unknown>) => string) => {
+const accessRuleHeading = (item: Value, translate: (_key: string, _options?: Record<string, unknown>) => string) => {
     const resources = list(item.resources);
     const subjects = list(item.subject);
     const networks = list(item.networks);
@@ -217,31 +311,56 @@ const accessRuleSummary = (item: Value, translate: (_key: string, _options?: Rec
         two_factor: "need two factors",
     };
 
-    return translate("Requests to {{what}} on {{where}} from {{who}}{{networks}} {{outcome}}.", {
-        networks: networks.length ? translate(" on {{networks}}", { networks: networks.join(", ") }) : "",
-        outcome: translate(outcome[str(item.policy)] ?? "use the default policy"),
-        what: resources.length ? resources.join(", ") : translate("every path"),
-        where: domains.length ? domains.join(", ") : translate("any domain"),
-        who: subjects.length ? subjects.join(translate(" or ")) : translate("anyone"),
+    const parts: HeadingPart[] = [
+        { key: true, text: resources.length ? resources.join(", ") : translate("Every path") },
+        { text: translate("on") },
+        { key: true, text: domains.length ? domains.join(", ") : translate("any domain") },
+        { text: translate("from") },
+        { key: true, text: subjects.length ? subjects.join(translate(" or ")) : translate("anyone") },
+    ];
+
+    if (networks.length) {
+        parts.push({ text: translate("on") }, { key: true, text: networks.join(", ") });
+    }
+
+    parts.push({
+        key: true,
+        text: `${translate(outcome[str(item.policy)] ?? "use the default policy")}.`,
+        tone: policyTone[str(item.policy)] ?? "neutral",
     });
+
+    return parts;
 };
 
 export const sections: SectionDef[] = [
     {
+        columns: [["main", "Logging"]],
         description: "Portal theme, the default second factor and logging.",
         fields: [
             {
                 defaultValue: "light",
+                display: "seg",
                 kind: "select",
                 label: "Theme",
                 options: ["auto", "light", "dark", "grey", "oled"],
+                optionSwatches: {
+                    auto: "linear-gradient(135deg, #ffffff 50%, #1e1e1e 50%)",
+                    dark: "#1e1e1e",
+                    grey: "#6b6f76",
+                    light: "#ffffff",
+                    oled: "#000000",
+                },
                 path: "theme",
+                wide: true,
             },
             {
                 defaultValue: "totp",
                 description: "The method new users get before they pick their own.",
+                display: "seg",
                 kind: "select",
                 label: "Default 2FA method",
+                optionIcons: { mobile_push: BellRing, totp: KeyRound, webauthn: Fingerprint },
+                optionLabels: { mobile_push: "Push", totp: "TOTP", webauthn: "WebAuthn" },
                 options: ["totp", "webauthn", "mobile_push"],
                 path: "default_2fa_method",
             },
@@ -251,6 +370,7 @@ export const sections: SectionDef[] = [
                 kind: "text",
                 label: "Certificates directory",
                 path: "certificates_directory",
+                picker: "directory",
                 placeholder: "/config/certificates",
                 wide: true,
             },
@@ -268,18 +388,24 @@ export const sections: SectionDef[] = [
                     },
                     {
                         defaultValue: "text",
+                        display: "seg",
                         kind: "select",
                         label: "Format",
                         options: ["text", "json"],
                         path: "log.format",
                     },
-                    { kind: "text", label: "File path", path: "log.file_path", placeholder: "/config/authelia.log" },
+                    {
+                        kind: "text",
+                        label: "File path",
+                        path: "log.file_path",
+                        picker: "new-file",
+                        placeholder: "/config/authelia.log",
+                    },
                     {
                         description: "With a file path set, stdout is silent unless this is on.",
                         kind: "bool",
                         label: "Keep stdout",
                         path: "log.keep_stdout",
-                        text: "Also print to stdout",
                     },
                 ],
                 keyName: "log",
@@ -297,23 +423,17 @@ export const sections: SectionDef[] = [
         description: "Who can reach which resources. Rules run top to bottom and the first match wins.",
         fields: [
             {
+                ...policyChoice,
                 defaultValue: "deny",
-                description: "Keep deny so unlisted domains stay closed.",
-                kind: "select",
+                description: "Applied when no rule matches the request. Keep deny so unlisted domains stay closed.",
                 label: "Default policy",
-                options: ["deny", "bypass", "one_factor", "two_factor"],
                 path: "access_control.default_policy",
             },
             {
                 addLabel: "Add rule",
                 description: "Use the arrows to change the order.",
                 fields: accessControlRuleFields,
-                itemBadge: (item: Value) =>
-                    item.policy
-                        ? { label: str(item.policy), tone: policyTone[str(item.policy)] ?? "neutral" }
-                        : undefined,
-                itemMeta: (item: Value) => list(item.subject)[0] ?? list(item.resources)[0],
-                itemSummary: accessRuleSummary,
+                itemHeading: accessRuleHeading,
                 itemTitle: (item: Value) => str(item.domain) || str(item.domain_regex),
                 kind: "array",
                 label: "Rules",
@@ -323,8 +443,7 @@ export const sections: SectionDef[] = [
         ],
         id: "access-control",
         keys: ["access_control"],
-        mainDescription: "Applied when no rule matches the request.",
-        mainTitle: "Defaults",
+        mainTitle: "",
         title: "Access Control",
     },
     {
@@ -345,25 +464,32 @@ export const sections: SectionDef[] = [
                 path: "session.same_site",
             },
             {
+                defaultValue: "5m",
                 description: "Sign out after this long without a request.",
-                kind: "text",
+                kind: "duration",
                 label: "Inactivity",
+                max: day,
+                min: 10,
                 path: "session.inactivity",
-                placeholder: "5 minutes",
             },
             {
+                defaultValue: "1h",
                 description: "Hard limit, even for active users.",
-                kind: "text",
+                kind: "duration",
                 label: "Expiration",
+                max: week,
+                min: minute,
                 path: "session.expiration",
-                placeholder: "1 hour",
             },
             {
-                description: "Set to -1 to hide the checkbox on the sign-in page.",
-                kind: "text",
+                defaultValue: "1M",
+                description: "Off hides the checkbox on the sign-in page.",
+                kind: "duration",
                 label: "Remember me",
+                max: year,
+                min: hour,
                 path: "session.remember_me",
-                placeholder: "1 month",
+                specials: rememberMeOff,
             },
             {
                 addLabel: "Add domain",
@@ -378,6 +504,7 @@ export const sections: SectionDef[] = [
                 label: "Cookie domains",
                 newItem: () => ({ authelia_url: "https://auth.example.com", domain: "example.com" }),
                 path: "session.cookies",
+                splitDurations: true,
             },
             {
                 description: "Keep sessions in Redis so they survive restarts.",
@@ -398,23 +525,48 @@ export const sections: SectionDef[] = [
         keys: ["session"],
         mainDescription: "Shared by every cookie domain below unless a domain overrides it.",
         mainTitle: "Cookie and lifetimes",
+        splitDurations: true,
         title: "Session",
     },
     {
+        choose: { groups: ["File", "LDAP"], label: "Backend" },
         description: "Where users and passwords come from.",
         fields: [
-            { kind: "bool", label: "Disable password reset", path: "authentication_backend.password_reset.disable" },
-            { kind: "bool", label: "Disable password change", path: "authentication_backend.password_change.disable" },
             {
-                description: "How often user details are refreshed, i.e. '5 minutes', 'always' or 'disable'.",
-                kind: "text",
+                invert: true,
+                kind: "bool",
+                label: "Enable password reset",
+                path: "authentication_backend.password_reset.disable",
+            },
+            {
+                invert: true,
+                kind: "bool",
+                label: "Enable password change",
+                path: "authentication_backend.password_change.disable",
+            },
+            {
+                defaultValue: "5m",
+                description: "How often user details are refreshed from the backend.",
+                kind: "duration",
                 label: "Refresh interval",
+                max: day,
+                min: 10,
                 path: "authentication_backend.refresh_interval",
+                specials: [
+                    { label: "Every request", value: "always" },
+                    { label: "Never", value: "disable" },
+                ],
             },
             {
                 description: "Users stored in a YAML file, manageable from the Users page.",
                 fields: [
-                    { kind: "text", label: "Path", path: "authentication_backend.file.path", wide: true },
+                    {
+                        kind: "text",
+                        label: "Path",
+                        path: "authentication_backend.file.path",
+                        picker: "file",
+                        wide: true,
+                    },
                     { kind: "bool", label: "Watch for changes", path: "authentication_backend.file.watch" },
                     {
                         kind: "bool",
@@ -427,15 +579,19 @@ export const sections: SectionDef[] = [
                         path: "authentication_backend.file.search.case_insensitive",
                     },
                     {
-                        kind: "select",
+                        defaultValue: "argon2",
+                        description: "Choose the algorithm new passwords are hashed with, each has its own parameters.",
+                        kind: "tabs",
                         label: "Password algorithm",
-                        options: ["argon2", "sha2crypt", "pbkdf2", "bcrypt", "scrypt"],
                         path: "authentication_backend.file.password.algorithm",
+                        tabs: passwordHashTabs,
                     },
-                    ...passwordHashFields,
                 ],
                 kind: "group",
                 label: "File",
+                offNote: "The file backend isn't used. Turn it on to keep users in a YAML file instead of a directory.",
+                replaces: [{ label: "LDAP", path: "authentication_backend.ldap" }],
+                togglePath: "authentication_backend.file",
             },
             {
                 description: "Users stored in an LDAP directory.",
@@ -452,14 +608,20 @@ export const sections: SectionDef[] = [
                         options: ["custom", "activedirectory", "rfc2307bis", "freeipa", "lldap", "glauth"],
                         path: "authentication_backend.ldap.implementation",
                     },
-                    { kind: "text", label: "Base DN", path: "authentication_backend.ldap.base_dn" },
                     { kind: "text", label: "Bind user", path: "authentication_backend.ldap.user" },
                     { kind: "password", label: "Bind password", path: "authentication_backend.ldap.password" },
+                    { kind: "text", label: "Base DN", path: "authentication_backend.ldap.base_dn" },
                     {
                         kind: "text",
                         label: "Additional users DN",
                         path: "authentication_backend.ldap.additional_users_dn",
                     },
+                    {
+                        kind: "text",
+                        label: "Additional groups DN",
+                        path: "authentication_backend.ldap.additional_groups_dn",
+                    },
+                    { kind: "bool", label: "StartTLS", path: "authentication_backend.ldap.start_tls" },
                     {
                         kind: "text",
                         label: "Users filter",
@@ -468,24 +630,30 @@ export const sections: SectionDef[] = [
                     },
                     {
                         kind: "text",
-                        label: "Additional groups DN",
-                        path: "authentication_backend.ldap.additional_groups_dn",
-                    },
-                    {
-                        kind: "text",
                         label: "Groups filter",
                         path: "authentication_backend.ldap.groups_filter",
                         wide: true,
                     },
-                    { kind: "bool", label: "StartTLS", path: "authentication_backend.ldap.start_tls" },
-                    { kind: "text", label: "Timeout", path: "authentication_backend.ldap.timeout" },
+                    {
+                        defaultValue: "5s",
+                        kind: "duration",
+                        label: "Timeout",
+                        max: 300,
+                        min: 1,
+                        path: "authentication_backend.ldap.timeout",
+                        wide: true,
+                    },
                 ],
                 kind: "group",
                 label: "LDAP",
+                offNote: "LDAP isn't used. Turn it on to look users up in a directory instead of the file backend.",
+                replaces: [{ label: "File", path: "authentication_backend.file" }],
+                togglePath: "authentication_backend.ldap",
             },
         ],
         id: "authentication-backend",
         keys: ["authentication_backend"],
+        splitDurations: true,
         title: "Authentication Backend",
     },
     {
@@ -493,7 +661,6 @@ export const sections: SectionDef[] = [
         fields: [
             {
                 fields: [
-                    { kind: "bool", label: "Disable", path: "totp.disable" },
                     { kind: "text", label: "Issuer", path: "totp.issuer", placeholder: "authelia.com" },
                     {
                         kind: "select",
@@ -508,11 +675,16 @@ export const sections: SectionDef[] = [
                 ],
                 kind: "group",
                 label: "One-Time Password",
+                toggle: { invert: true, path: "totp.disable" },
             },
             {
                 fields: [
-                    { kind: "bool", label: "Disable", path: "webauthn.disable" },
-                    { kind: "bool", label: "Enable passkey login", path: "webauthn.enable_passkey_login" },
+                    {
+                        description: "Lets users sign in with a passkey instead of a username and password.",
+                        kind: "bool",
+                        label: "Enable passkey login",
+                        path: "webauthn.enable_passkey_login",
+                    },
                     { kind: "text", label: "Display name", path: "webauthn.display_name", placeholder: "Authelia" },
                     {
                         kind: "select",
@@ -526,14 +698,21 @@ export const sections: SectionDef[] = [
                         options: ["discouraged", "preferred", "required"],
                         path: "webauthn.selection_criteria.user_verification",
                     },
-                    { kind: "text", label: "Timeout", path: "webauthn.timeout", placeholder: "60 seconds" },
+                    {
+                        defaultValue: "60s",
+                        kind: "duration",
+                        label: "Timeout",
+                        max: 10 * minute,
+                        min: 10,
+                        path: "webauthn.timeout",
+                    },
                 ],
                 kind: "group",
                 label: "WebAuthn",
+                toggle: { invert: true, path: "webauthn.disable" },
             },
             {
                 fields: [
-                    { kind: "bool", label: "Disable", path: "duo_api.disable" },
                     { kind: "text", label: "Hostname", path: "duo_api.hostname" },
                     { kind: "text", label: "Integration key", path: "duo_api.integration_key" },
                     { kind: "password", label: "Secret key", path: "duo_api.secret_key" },
@@ -541,6 +720,7 @@ export const sections: SectionDef[] = [
                 ],
                 kind: "group",
                 label: "Duo",
+                toggle: { invert: true, path: "duo_api.disable" },
             },
         ],
         id: "second-factor",
@@ -548,11 +728,11 @@ export const sections: SectionDef[] = [
         title: "Second Factor",
     },
     {
+        columns: [["Standard", "zxcvbn"]],
         description: "Requirements for new passwords.",
         fields: [
             {
                 fields: [
-                    { kind: "bool", label: "Enabled", path: "password_policy.standard.enabled" },
                     { kind: "number", label: "Minimum length", min: 1, path: "password_policy.standard.min_length" },
                     { kind: "number", label: "Maximum length", min: 0, path: "password_policy.standard.max_length" },
                     { kind: "bool", label: "Require uppercase", path: "password_policy.standard.require_uppercase" },
@@ -566,10 +746,10 @@ export const sections: SectionDef[] = [
                 ],
                 kind: "group",
                 label: "Standard",
+                toggle: { path: "password_policy.standard.enabled" },
             },
             {
                 fields: [
-                    { kind: "bool", label: "Enabled", path: "password_policy.zxcvbn.enabled" },
                     {
                         kind: "number",
                         label: "Minimum score",
@@ -580,6 +760,7 @@ export const sections: SectionDef[] = [
                 ],
                 kind: "group",
                 label: "zxcvbn",
+                toggle: { path: "password_policy.zxcvbn.enabled" },
             },
         ],
         id: "password-policy",
@@ -587,14 +768,29 @@ export const sections: SectionDef[] = [
         title: "Password Policy",
     },
     {
+        columns: [["Regulation", "Identity Validation"]],
         description: "Brute force protection and identity verification for sensitive actions.",
         fields: [
             {
                 fields: [
                     { kind: "list", label: "Modes", path: "regulation.modes", placeholder: "user" },
                     { kind: "number", label: "Maximum retries", min: 0, path: "regulation.max_retries" },
-                    { kind: "text", label: "Find time", path: "regulation.find_time", placeholder: "2 minutes" },
-                    { kind: "text", label: "Ban time", path: "regulation.ban_time", placeholder: "5 minutes" },
+                    {
+                        defaultValue: "2m",
+                        kind: "duration",
+                        label: "Find time",
+                        max: hour,
+                        min: 10,
+                        path: "regulation.find_time",
+                    },
+                    {
+                        defaultValue: "5m",
+                        kind: "duration",
+                        label: "Ban time",
+                        max: day,
+                        min: 10,
+                        path: "regulation.ban_time",
+                    },
                 ],
                 kind: "group",
                 label: "Regulation",
@@ -602,8 +798,11 @@ export const sections: SectionDef[] = [
             {
                 fields: [
                     {
-                        kind: "text",
+                        defaultValue: "5m",
+                        kind: "duration",
                         label: "Reset password link lifespan",
+                        max: hour,
+                        min: minute,
                         path: "identity_validation.reset_password.jwt_lifespan",
                     },
                     {
@@ -612,13 +811,19 @@ export const sections: SectionDef[] = [
                         path: "identity_validation.reset_password.jwt_secret",
                     },
                     {
-                        kind: "text",
+                        defaultValue: "5m",
+                        kind: "duration",
                         label: "Code lifespan",
+                        max: 30 * minute,
+                        min: minute,
                         path: "identity_validation.elevated_session.code_lifespan",
                     },
                     {
-                        kind: "text",
+                        defaultValue: "10m",
+                        kind: "duration",
                         label: "Elevation lifespan",
+                        max: hour,
+                        min: minute,
                         path: "identity_validation.elevated_session.elevation_lifespan",
                     },
                     {
@@ -646,9 +851,10 @@ export const sections: SectionDef[] = [
         title: "Regulation & Verification",
     },
     {
+        choose: { groups: ["SMTP", "File System"], label: "Notifier" },
         description: "How emails with one-time codes and password reset links are sent.",
         fields: [
-            { kind: "bool", label: "Disable startup check", path: "notifier.disable_startup_check" },
+            { invert: true, kind: "bool", label: "Enable startup check", path: "notifier.disable_startup_check" },
             {
                 fields: [
                     {
@@ -672,32 +878,63 @@ export const sections: SectionDef[] = [
                         path: "notifier.smtp.subject",
                         placeholder: "[Authelia] {title}",
                     },
-                    { kind: "text", label: "Timeout", path: "notifier.smtp.timeout" },
-                    { kind: "bool", label: "Disable HTML emails", path: "notifier.smtp.disable_html_emails" },
-                    { kind: "bool", label: "Disable require TLS", path: "notifier.smtp.disable_require_tls" },
-                    { kind: "bool", label: "Disable StartTLS", path: "notifier.smtp.disable_starttls" },
+                    {
+                        invert: true,
+                        kind: "bool",
+                        label: "Enable HTML emails",
+                        path: "notifier.smtp.disable_html_emails",
+                    },
+                    { invert: true, kind: "bool", label: "Require TLS", path: "notifier.smtp.disable_require_tls" },
+                    { invert: true, kind: "bool", label: "Enable StartTLS", path: "notifier.smtp.disable_starttls" },
+                    {
+                        defaultValue: "5s",
+                        kind: "duration",
+                        label: "Timeout",
+                        max: 300,
+                        min: 1,
+                        path: "notifier.smtp.timeout",
+                    },
                 ],
                 kind: "group",
                 label: "SMTP",
+                replaces: [{ label: "File System", path: "notifier.filesystem" }],
+                togglePath: "notifier.smtp",
             },
             {
-                fields: [{ kind: "text", label: "File name", path: "notifier.filesystem.filename", wide: true }],
+                fields: [
+                    {
+                        kind: "text",
+                        label: "File name",
+                        path: "notifier.filesystem.filename",
+                        picker: "new-file",
+                        wide: true,
+                    },
+                ],
                 kind: "group",
                 label: "File System",
+                replaces: [{ label: "SMTP", path: "notifier.smtp" }],
+                togglePath: "notifier.filesystem",
             },
         ],
         id: "notifier",
         keys: ["notifier"],
+        mainTitle: "",
         title: "Notifications",
     },
     {
+        choose: { groups: ["SQLite", "PostgreSQL", "MySQL"], label: "Database" },
         description: "The database used to store second factor registrations, logs and OpenID Connect sessions.",
         fields: [
             { kind: "password", label: "Encryption key", path: "storage.encryption_key", wide: true },
             {
-                fields: [{ kind: "text", label: "Path", path: "storage.local.path", wide: true }],
+                fields: [{ kind: "text", label: "Path", path: "storage.local.path", picker: "new-file", wide: true }],
                 kind: "group",
                 label: "SQLite",
+                replaces: [
+                    { label: "PostgreSQL", path: "storage.postgres" },
+                    { label: "MySQL", path: "storage.mysql" },
+                ],
+                togglePath: "storage.local",
             },
             {
                 fields: [
@@ -706,10 +943,22 @@ export const sections: SectionDef[] = [
                     { kind: "text", label: "Schema", path: "storage.postgres.schema" },
                     { kind: "text", label: "Username", path: "storage.postgres.username" },
                     { kind: "password", label: "Password", path: "storage.postgres.password" },
-                    { kind: "text", label: "Timeout", path: "storage.postgres.timeout" },
+                    {
+                        defaultValue: "5s",
+                        kind: "duration",
+                        label: "Timeout",
+                        max: 300,
+                        min: 1,
+                        path: "storage.postgres.timeout",
+                    },
                 ],
                 kind: "group",
                 label: "PostgreSQL",
+                replaces: [
+                    { label: "SQLite", path: "storage.local" },
+                    { label: "MySQL", path: "storage.mysql" },
+                ],
+                togglePath: "storage.postgres",
             },
             {
                 fields: [
@@ -717,14 +966,27 @@ export const sections: SectionDef[] = [
                     { kind: "text", label: "Database", path: "storage.mysql.database" },
                     { kind: "text", label: "Username", path: "storage.mysql.username" },
                     { kind: "password", label: "Password", path: "storage.mysql.password" },
-                    { kind: "text", label: "Timeout", path: "storage.mysql.timeout" },
+                    {
+                        defaultValue: "5s",
+                        kind: "duration",
+                        label: "Timeout",
+                        max: 300,
+                        min: 1,
+                        path: "storage.mysql.timeout",
+                    },
                 ],
                 kind: "group",
                 label: "MySQL",
+                replaces: [
+                    { label: "SQLite", path: "storage.local" },
+                    { label: "PostgreSQL", path: "storage.postgres" },
+                ],
+                togglePath: "storage.mysql",
             },
         ],
         id: "storage",
         keys: ["storage"],
+        mainTitle: "",
         title: "Storage",
     },
     {
@@ -733,10 +995,15 @@ export const sections: SectionDef[] = [
         fields: [
             { kind: "password", label: "HMAC secret", path: "identity_providers.oidc.hmac_secret", wide: true },
             {
+                defaultValue: "public_clients_only",
+                display: "seg",
                 kind: "select",
                 label: "Enforce PKCE",
+                optionIcons: { always: ShieldCheck, never: CircleOff, public_clients_only: Users },
+                optionLabels: { always: "Always", never: "Never", public_clients_only: "Public clients" },
                 options: ["never", "public_clients_only", "always"],
                 path: "identity_providers.oidc.enforce_pkce",
+                wide: true,
             },
             {
                 description: "The minimum entropy of the nonce and state parameters, -1 disables the check.",
@@ -748,10 +1015,38 @@ export const sections: SectionDef[] = [
             },
             {
                 fields: [
-                    { kind: "text", label: "Access token", path: "identity_providers.oidc.lifespans.access_token" },
-                    { kind: "text", label: "Authorize code", path: "identity_providers.oidc.lifespans.authorize_code" },
-                    { kind: "text", label: "ID token", path: "identity_providers.oidc.lifespans.id_token" },
-                    { kind: "text", label: "Refresh token", path: "identity_providers.oidc.lifespans.refresh_token" },
+                    {
+                        defaultValue: "1h",
+                        kind: "duration",
+                        label: "Access token",
+                        max: day,
+                        min: 5 * minute,
+                        path: "identity_providers.oidc.lifespans.access_token",
+                    },
+                    {
+                        defaultValue: "1m",
+                        kind: "duration",
+                        label: "Authorize code",
+                        max: 10 * minute,
+                        min: 10,
+                        path: "identity_providers.oidc.lifespans.authorize_code",
+                    },
+                    {
+                        defaultValue: "1h",
+                        kind: "duration",
+                        label: "ID token",
+                        max: day,
+                        min: 5 * minute,
+                        path: "identity_providers.oidc.lifespans.id_token",
+                    },
+                    {
+                        defaultValue: "90m",
+                        kind: "duration",
+                        label: "Refresh token",
+                        max: month,
+                        min: 10 * minute,
+                        path: "identity_providers.oidc.lifespans.refresh_token",
+                    },
                 ],
                 kind: "group",
                 label: "Lifespans",
@@ -782,16 +1077,21 @@ export const sections: SectionDef[] = [
         ],
         id: "openid-connect",
         keys: ["identity_providers"],
+        mainTitle: "",
         title: "OpenID Connect",
     },
     {
+        columns: [
+            ["Server", "NTP"],
+            ["Metrics", "Privacy Policy"],
+        ],
         description: "Listener, NTP, metrics and the privacy policy.",
         fields: [
             {
                 fields: [
                     { kind: "text", label: "Address", path: "server.address", placeholder: "tcp://:9091/" },
-                    { kind: "text", label: "Asset path", path: "server.asset_path" },
-                    { kind: "bool", label: "Disable health check", path: "server.disable_healthcheck" },
+                    { kind: "text", label: "Asset path", path: "server.asset_path", picker: "directory" },
+                    { invert: true, kind: "bool", label: "Enable health check", path: "server.disable_healthcheck" },
                     { kind: "bool", label: "Enable pprof", path: "server.endpoints.enable_pprof" },
                     { kind: "bool", label: "Enable expvars", path: "server.endpoints.enable_expvars" },
                 ],
@@ -807,29 +1107,38 @@ export const sections: SectionDef[] = [
                         placeholder: "udp://time.cloudflare.com:123",
                     },
                     { kind: "number", label: "Version", path: "ntp.version", placeholder: "4" },
-                    { kind: "text", label: "Maximum desync", path: "ntp.max_desync", placeholder: "3 seconds" },
-                    { kind: "bool", label: "Disable startup check", path: "ntp.disable_startup_check" },
-                    { kind: "bool", label: "Disable failure", path: "ntp.disable_failure" },
+                    {
+                        defaultValue: "3s",
+                        kind: "duration",
+                        label: "Maximum desync",
+                        max: minute,
+                        min: 1,
+                        path: "ntp.max_desync",
+                    },
+                    { invert: true, kind: "bool", label: "Enable startup check", path: "ntp.disable_startup_check" },
+                    { invert: true, kind: "bool", label: "Fail on desync", path: "ntp.disable_failure" },
                 ],
                 kind: "group",
                 label: "NTP",
             },
             {
+                description: "Prometheus metrics on a separate listener.",
                 fields: [
-                    { kind: "bool", label: "Enabled", path: "telemetry.metrics.enabled" },
                     { kind: "text", label: "Address", path: "telemetry.metrics.address", placeholder: "tcp://:9959/" },
                 ],
                 kind: "group",
                 label: "Metrics",
+                toggle: { path: "telemetry.metrics.enabled" },
             },
             {
+                description: "A link to the privacy policy on the sign-in page.",
                 fields: [
-                    { kind: "bool", label: "Enabled", path: "privacy_policy.enabled" },
                     { kind: "bool", label: "Require user acceptance", path: "privacy_policy.require_user_acceptance" },
                     { kind: "text", label: "Policy URL", path: "privacy_policy.policy_url", wide: true },
                 ],
                 kind: "group",
                 label: "Privacy Policy",
+                toggle: { path: "privacy_policy.enabled" },
             },
         ],
         id: "system",
@@ -846,8 +1155,23 @@ export const sections: SectionDef[] = [
                 label: "Enabled",
                 path: "administration.enabled",
             },
-            { kind: "text", label: "Administrator group", path: "administration.admin_group", placeholder: "admins" },
-            { kind: "bool", label: "Disable restart", path: "administration.disable_restart" },
+            { invert: true, kind: "bool", label: "Enable restart", path: "administration.disable_restart" },
+            {
+                kind: "text",
+                label: "Administrator group",
+                path: "administration.admin_group",
+                placeholder: "admins",
+                wide: true,
+            },
+            {
+                description:
+                    "The directories the file picker can browse. Empty uses the directories of the configuration files.",
+                kind: "list",
+                label: "File picker directories",
+                path: "administration.file_roots",
+                placeholder: "/config",
+                wide: true,
+            },
         ],
         id: "administration",
         keys: ["administration"],

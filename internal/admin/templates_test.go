@@ -201,3 +201,18 @@ func TestConfigurationManagerTemplatesSectionsText(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result.Valid, "errors: %v", result.Errors)
 }
+
+func TestTemplatesRestoreMindentAuto(t *testing.T) {
+	tmpl := newTemplates(true, nil)
+
+	secret := tmpl.add(`{{ secret "/secrets/a" | mindent auto "|" | msquote }}`, false)
+	plain := tmpl.add(`{{ secret "/secrets/b" | mindent 0 "|" | msquote }}`, false)
+
+	text := "jwks:\n      - key: " + secret + "\n  secret: " + secret + "\nother: " + plain + "\n"
+
+	assert.Equal(t,
+		"jwks:\n      - key: {{ secret \"/secrets/a\" | mindent 10 \"|\" | msquote }}\n"+
+			"  secret: {{ secret \"/secrets/a\" | mindent 4 \"|\" | msquote }}\n"+
+			"other: {{ secret \"/secrets/b\" | mindent 0 \"|\" | msquote }}\n",
+		tmpl.restore(text))
+}

@@ -123,16 +123,7 @@ const ConfigurationView = function () {
             <PageHeader
                 micro={translate("Configuration")}
                 title={
-                    <span className="title-row">
-                        {translate(wholeFile ? wholeFileSection.title : section.title)}
-                        {wholeFile
-                            ? null
-                            : section.keys.map((key) => (
-                                  <span key={key} className="key">
-                                      {key}
-                                  </span>
-                              ))}
-                    </span>
+                    <span className="title-row">{translate(wholeFile ? wholeFileSection.title : section.title)}</span>
                 }
                 description={
                     wholeFile
@@ -154,36 +145,42 @@ const ConfigurationView = function () {
                 }
             />
 
-            <div className="fileline">
-                <span style={{ alignItems: "center", display: "inline-flex", gap: 7 }}>
-                    <FileText size={14} strokeWidth={1.75} aria-hidden />
-                    {files.length > 1 ? (
-                        <select
-                            className="mono tx2"
-                            style={{ background: "transparent", border: 0, color: "inherit", fontSize: 12 }}
-                            value={path}
-                            onChange={(e) => setPath(e.target.value)}
-                        >
-                            {files.map((f) => (
-                                <option key={f.path} value={f.path}>
-                                    {f.path}
-                                </option>
-                            ))}
-                        </select>
-                    ) : (
-                        <span className="mono tx2">{path}</span>
-                    )}
-                </span>
-                {file ? (
-                    <>
-                        <span>·</span>
-                        <span>
-                            {translate("modified")} <span className="mono">{formatDateTime(file.modified)}</span>
-                        </span>
-                    </>
-                ) : null}
-                {file && !file.writable ? <Badge tone="alert">{translate("read-only")}</Badge> : null}
-            </div>
+            {wholeFile ? (
+                <div className="fileline">
+                    <span style={{ alignItems: "center", display: "inline-flex", gap: 7 }}>
+                        <FileText size={14} strokeWidth={1.75} aria-hidden />
+                        {files.length > 1 ? (
+                            <select
+                                className="mono tx2"
+                                style={{ background: "transparent", border: 0, color: "inherit", fontSize: 12 }}
+                                value={path}
+                                onChange={(e) => setPath(e.target.value)}
+                            >
+                                {files.map((f) => (
+                                    <option key={f.path} value={f.path}>
+                                        {f.path}
+                                    </option>
+                                ))}
+                            </select>
+                        ) : (
+                            <span className="mono tx2">{path}</span>
+                        )}
+                    </span>
+                    {file ? (
+                        <>
+                            <span>·</span>
+                            <span>
+                                {translate("modified")} <span className="mono">{formatDateTime(file.modified)}</span>
+                            </span>
+                        </>
+                    ) : null}
+                    {file && !file.writable ? <Badge tone="alert">{translate("read-only")}</Badge> : null}
+                </div>
+            ) : file && !file.writable ? (
+                <div className="fileline">
+                    <Badge tone="alert">{translate("read-only")}</Badge>
+                </div>
+            ) : null}
 
             {restartPending ? (
                 <Note tone="warn">
@@ -295,12 +292,7 @@ const SaveBar = function (props: {
                     </>
                 )}
             </span>
-            <span className="hint">
-                {translate(
-                    props.hint ??
-                        "Empty fields use the default value. Durations accept values like 5 minutes, 1h or 1 week.",
-                )}
-            </span>
+            <span className="hint">{translate(props.hint ?? "Empty fields use the default value.")}</span>
             {props.extra}
             <Btn disabled={!dirty || props.busy} onClick={props.onReset}>
                 {translate("Reset")}

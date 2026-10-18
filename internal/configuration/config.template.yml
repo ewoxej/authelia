@@ -1012,6 +1012,12 @@ session:
   ## The group whose members are allowed to use the administration web UI.
   # admin_group: 'admins'
 
+  ## The directories the file picker of the administration web UI can browse. Defaults to the directories of the
+  ## configuration files.
+  # file_roots:
+  #   - '/config'
+  #   - '/secrets'
+
   ## Prevents the administration web UI from restarting Authelia after configuration changes.
   # disable_restart: false
 

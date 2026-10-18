@@ -87,7 +87,7 @@ const AdminLayout = function (props: { overview?: AdminOverview; children: React
     const user = props.overview?.display_name || props.overview?.username || "";
 
     return (
-        <div className="adm app">
+        <div className={adminDevNoAuth ? "adm app has-devbar" : "adm app"}>
             <header className="topbar">
                 <button type="button" className="brand" onClick={() => navigate(AdminRoute)}>
                     <span className="brand-mark">

@@ -266,6 +266,10 @@ func handlerMain(config *schema.Configuration, providers middlewares.Providers) 
 		r.GET("/api/admin/consents", middlewareAdmin(handlers.AdminConsentsGET))
 		r.DELETE("/api/admin/consents/{id}", middlewareAdmin(handlers.AdminConsentDELETE))
 
+		r.GET("/api/admin/files", middlewareAdmin(handlers.AdminFilesGET))
+		r.POST("/api/admin/files/directory", middlewareAdmin(handlers.AdminFilesDirectoryPOST))
+		r.POST("/api/admin/files/secret", middlewareAdmin(handlers.AdminFilesSecretPOST))
+
 		r.GET("/api/admin/configuration/file", middlewareAdmin(handlers.AdminConfigurationFileGET))
 		r.PUT("/api/admin/configuration/file", middlewareAdmin(handlers.AdminConfigurationFilePUT))
 		r.POST("/api/admin/configuration/validate", middlewareAdmin(handlers.AdminConfigurationValidatePOST))

@@ -80,6 +80,7 @@ html[data-admin-theme] body {
 
 /* ---------- base ---------- */
 .adm {
+    --a-label: 180px;
     color: var(--a-tx);
     font-family: var(--a-font-sans);
     font-size: 13.5px;
@@ -211,14 +212,17 @@ html[data-admin-theme] body {
 }
 
 .adm .devbar {
+    position: sticky;
+    top: 71px;
+    z-index: 19;
     flex: none;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
     gap: 10px;
-    min-height: 34px;
-    padding: 6px 16px;
+    height: 34px;
+    padding: 0 16px;
     background: var(--a-alert-tint);
     color: var(--a-alert-tx);
     font-size: 12.5px;
@@ -233,6 +237,10 @@ html[data-admin-theme] body {
     text-transform: uppercase;
 }
 
+.adm.has-devbar {
+    --a-head: 105px;
+}
+
 .adm .body {
     flex: 1;
     display: flex;
@@ -242,7 +250,12 @@ html[data-admin-theme] body {
 
 .adm .side {
     flex: 0 0 248px;
-    padding: 18px 14px;
+    position: sticky;
+    top: var(--a-head, 71px);
+    align-self: flex-start;
+    height: calc(100vh - var(--a-head, 71px));
+    overflow-y: auto;
+    padding: 14px 14px 12px;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -272,7 +285,7 @@ html[data-admin-theme] body {
     display: flex;
     align-items: center;
     gap: 11px;
-    height: 38px;
+    height: 36px;
     padding: 0 12px;
     border-radius: 9px;
     color: var(--a-tx2);
@@ -325,7 +338,7 @@ html[data-admin-theme] body {
 .adm .sub {
     display: flex;
     align-items: center;
-    height: 31px;
+    height: 27px;
     padding: 0 10px;
     border-radius: 8px;
     color: var(--a-tx2);
@@ -350,7 +363,7 @@ html[data-admin-theme] body {
 
 .adm .side-foot {
     margin-top: auto;
-    padding-top: 18px;
+    padding-top: 10px;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -583,6 +596,8 @@ html[data-admin-theme] body {
 
 .adm .seg {
     display: inline-flex;
+    justify-self: start;
+    align-self: start;
     flex-wrap: wrap;
     gap: 2px;
     padding: 3px;
@@ -608,6 +623,144 @@ html[data-admin-theme] body {
 }
 
 .adm .seg button:hover {
+    color: var(--a-tx);
+}
+
+.adm .seg button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.adm .seg .swatch {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--a-border);
+}
+
+.adm .seg.tiles button {
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    min-height: 52px;
+    padding: 6px 4px;
+    font-size: 11px;
+    line-height: 1.15;
+    white-space: normal;
+    text-align: center;
+}
+
+.adm .seg.tiles {
+    display: inline-grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 76px);
+    width: fit-content;
+    max-width: 100%;
+    gap: 3px;
+    padding: 3px;
+}
+
+.adm .seg.tiles .swatch {
+    width: 17px;
+    height: 17px;
+    box-shadow: 0 0 0 1.5px var(--a-tx3);
+}
+
+.adm .choice {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.adm .tag-add {
+    display: inline-grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: var(--a-chip);
+    box-shadow: inset 0 0 0 1px var(--a-border);
+    color: var(--a-tx2);
+    cursor: pointer;
+}
+
+.adm .tag-add:hover:not(:disabled),
+.adm .tag-add[aria-expanded="true"] {
+    background: var(--a-accent-12);
+    color: var(--a-accent-tx);
+}
+
+.adm .tag-add:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.adm .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.adm .pill {
+    height: 28px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--a-chip);
+    box-shadow: inset 0 0 0 1px var(--a-border);
+    color: var(--a-tx3);
+    font: 500 12px var(--a-font-mono);
+    cursor: pointer;
+    transition:
+        background var(--a-dur),
+        color var(--a-dur);
+}
+
+.adm .pill:hover:not(:disabled) {
+    color: var(--a-tx);
+}
+
+.adm .pill[aria-pressed="true"] {
+    background: var(--a-accent);
+    box-shadow: none;
+    color: var(--a-on-accent);
+    font-weight: 600;
+}
+
+.adm .seg.changed {
+    box-shadow: inset 0 0 0 1px var(--a-accent);
+}
+
+.adm .fld-title {
+    display: block;
+    line-height: 1.35;
+}
+
+/* the reset button follows the last line of a label which wraps */
+.adm .fld-title .fld-reset {
+    margin-left: 6px;
+    vertical-align: -4px;
+}
+
+.adm .fld-reset {
+    display: inline-grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--a-tx3);
+    cursor: pointer;
+}
+
+.adm .fld-reset:hover {
+    background: var(--a-chip);
     color: var(--a-tx);
 }
 
@@ -776,6 +929,16 @@ html[data-admin-theme] body {
     white-space: nowrap;
 }
 
+.adm .tag-input .tag {
+    max-width: 100%;
+}
+
+.adm .tag-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .adm .tag.plain {
     padding-right: 9px;
 }
@@ -858,11 +1021,74 @@ html[data-admin-theme] body {
     grid-column: span 2;
 }
 
+/* cards side by side, the fields inside get one column */
+.adm .cols2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    align-items: stretch;
+}
+
+.adm .cols2 > * {
+    display: flex;
+    flex-direction: column;
+}
+
+.adm .cols2 > * > .card {
+    flex: 1;
+}
+
+.adm .cols2 .grid2 {
+    grid-template-columns: 1fr;
+}
+
+.adm .cols2 .span2 {
+    grid-column: auto;
+}
+
+@media (max-width: 1100px) {
+    .adm .cols2 {
+        grid-template-columns: 1fr;
+    }
+}
+
 .adm .fld {
     display: flex;
     flex-direction: column;
     gap: 7px;
     min-width: 0;
+}
+
+/* label and control share a row in the configuration forms */
+.adm .fld.inline {
+    display: grid;
+    grid-template-columns: var(--a-label) minmax(0, 1fr);
+    align-items: start;
+    column-gap: 16px;
+    row-gap: 6px;
+}
+
+.adm .fld.inline > .fld-head {
+    min-height: 38px;
+    align-items: center;
+}
+
+.adm .fld.inline > .help {
+    grid-column: 2;
+}
+
+@media (max-width: 720px) {
+    .adm .fld.inline {
+        grid-template-columns: 1fr;
+    }
+
+    .adm .fld.inline > .fld-head {
+        min-height: 0;
+    }
+
+    .adm .fld.inline > .help {
+        grid-column: auto;
+    }
 }
 
 .adm .fld-head {
@@ -983,6 +1209,18 @@ html[data-admin-theme] body {
     transition: box-shadow var(--a-dur);
 }
 
+.adm .tag-input.bare,
+.adm .tag-input.bare:focus-within {
+    min-height: 38px;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.adm .tag.changed {
+    box-shadow: inset 0 0 0 1px var(--a-planned);
+}
+
 .adm .tag-input.changed {
     box-shadow: inset 0 0 0 1px var(--a-planned);
 }
@@ -1008,6 +1246,54 @@ html[data-admin-theme] body {
 .adm .tag-input input::placeholder {
     color: var(--a-tx3);
     font-family: var(--a-font-sans);
+}
+
+.adm .toggle-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--a-label) auto;
+    justify-content: start;
+    align-items: center;
+    column-gap: 16px;
+    min-height: 38px;
+}
+
+.adm .fld-label {
+    font-family: var(--a-font-sans);
+}
+
+.adm [data-tip] {
+    position: relative;
+}
+
+.adm [data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    z-index: 30;
+    left: 0;
+    bottom: calc(100% + 2px);
+    width: max-content;
+    max-width: min(340px, 90vw);
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: var(--a-panel-2, var(--a-panel));
+    box-shadow:
+        inset 0 0 0 1px var(--a-border),
+        0 6px 20px rgba(0, 0, 0, 0.25);
+    color: var(--a-tx2);
+    font: 11.5px/1.4 var(--a-font-sans);
+    pointer-events: none;
+}
+
+.adm .toggle-row.changed::before {
+    content: "";
+    position: absolute;
+    left: -10px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--a-planned);
 }
 
 .adm .inline-box {
@@ -1162,6 +1448,29 @@ html[data-admin-theme] body {
     white-space: nowrap;
 }
 
+.adm .row-h .dom.sentence {
+    font-family: var(--a-font-sans);
+    font-size: 13.5px;
+    color: var(--a-tx2);
+}
+
+.adm .row-h .hl {
+    font-weight: 600;
+    color: var(--a-tx);
+}
+
+.adm .row-h .hl.tone-accent {
+    color: var(--a-accent);
+}
+
+.adm .row-h .hl.tone-planned {
+    color: var(--a-planned);
+}
+
+.adm .row-h .hl.tone-alert {
+    color: var(--a-alert-tx);
+}
+
 .adm .row-h .meta {
     font-size: 12px;
     color: var(--a-tx3);
@@ -1186,6 +1495,16 @@ html[data-admin-theme] body {
 
 .adm .row.open .exp .chev {
     transform: rotate(90deg);
+}
+
+@media (max-width: 1100px) {
+    .adm .row-b.grid2 {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .adm .row-b.grid2 .span2 {
+        grid-column: auto;
+    }
 }
 
 .adm .row-b {
@@ -1551,6 +1870,8 @@ html[data-admin-theme] body {
 @media (max-width: 720px) {
     .adm .side {
         flex-basis: 100%;
+        position: static;
+        height: auto;
         box-shadow: inset 0 -1px 0 var(--a-border-2);
     }
 
@@ -1576,5 +1897,383 @@ html[data-admin-theme] body {
 
     .adm .topbar {
         padding: 0 16px;
+    }
+}
+
+/* duration slider */
+.adm .duration {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 380px;
+}
+
+.adm .slide-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.adm .slide-row .inp {
+    width: 88px;
+    min-width: 64px;
+    flex: none;
+    text-align: center;
+}
+
+.adm .slider {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    padding: 24px 10px 26px;
+}
+
+.adm .slider .track {
+    position: relative;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--a-chip);
+    box-shadow: inset 0 0 0 1px var(--a-border);
+    cursor: pointer;
+    touch-action: none;
+}
+
+.adm .slider .fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: 999px;
+    background: var(--a-accent);
+}
+
+.adm .slider .fill.is-default {
+    background: var(--a-tx3);
+    opacity: 0.6;
+}
+
+.adm .slider .thumb {
+    position: absolute;
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--a-accent);
+    box-shadow: 0 0 0 4px var(--a-accent-12);
+    z-index: 2;
+    cursor: grab;
+}
+
+.adm .slider .thumb.is-default {
+    background: var(--a-tx3);
+    box-shadow: 0 0 0 4px var(--a-chip);
+}
+
+.adm .slider .thumb:active {
+    cursor: grabbing;
+}
+
+.adm .slider .bubble {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    border-radius: 7px;
+    background: var(--a-tx);
+    color: var(--a-panel);
+    font: 600 11.5px var(--a-font-mono);
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.adm .slider .ticks {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    top: calc(100% - 16px);
+    height: 14px;
+    pointer-events: none;
+}
+
+.adm .slider .ticks span {
+    position: absolute;
+    transform: translateX(-50%);
+    font: 10px var(--a-font-mono);
+    color: var(--a-tx3);
+    white-space: nowrap;
+}
+
+.adm .slider .ticks span::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -12px;
+    width: 1px;
+    height: 6px;
+    background: var(--a-border);
+}
+
+.adm .help.err {
+    color: var(--a-alert-tx);
+}
+
+.adm .help.warn {
+    color: var(--a-planned-tx, var(--a-planned));
+}
+
+.adm .inp.bad {
+    box-shadow:
+        inset 0 0 0 1px var(--a-alert),
+        0 0 0 3px var(--a-alert-tint);
+}
+
+/* tabs */
+.adm .tabs {
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+    box-shadow: inset 0 -1px 0 var(--a-border);
+}
+
+.adm .tabs.changed {
+    box-shadow: inset 0 -1px 0 var(--a-planned);
+}
+
+.adm .tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 36px;
+    padding: 0 14px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--a-tx3);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.adm .tab:hover {
+    color: var(--a-tx);
+}
+
+.adm .tab[aria-selected="true"] {
+    border-bottom-color: var(--a-accent);
+    color: var(--a-tx);
+    font-weight: 600;
+}
+
+.adm .tab .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--a-accent);
+}
+
+.adm .tab-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-top: 16px;
+}
+
+.adm .tab-use {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* file picker */
+.adm.dialog.files {
+    max-width: 560px !important;
+}
+
+.adm .files-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.adm .files-path {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12.5px;
+    color: var(--a-tx2);
+}
+
+.adm .files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    height: 300px;
+    overflow-y: auto;
+    padding: 4px;
+    border-radius: 10px;
+    background: var(--a-panel);
+    box-shadow: inset 0 0 0 1px var(--a-border);
+}
+
+.adm .files-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 32px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--a-tx2);
+    font-size: 12.5px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.adm .files-row:hover:not(:disabled) {
+    background: var(--a-chip);
+    color: var(--a-tx);
+}
+
+.adm .files-row:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.adm .files-row.on {
+    background: var(--a-accent-12);
+    color: var(--a-accent-tx);
+}
+
+.adm .files-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.adm .files-size {
+    flex: none;
+    font-size: 11px;
+}
+
+.adm .files-empty {
+    padding: 14px;
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--a-tx3);
+}
+
+.adm .files-empty.err {
+    color: var(--a-alert-tx);
+}
+
+.adm .field-with-button {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.adm .field-with-button > :first-child {
+    flex: 1;
+    min-width: 0;
+}
+
+/* a card with the durations in a column on the right */
+.adm .split {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 28px;
+    align-items: start;
+}
+
+.adm .split.centered {
+    align-items: center;
+}
+
+.adm .split-col {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-width: 0;
+}
+
+.adm .split .fld.inline {
+    display: flex;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.adm .split .fld.inline.k-duration .slider {
+    padding-top: 38px;
+}
+
+.adm .split .fld.inline.k-duration .duration {
+    gap: 0;
+}
+
+.adm .split .fld.inline > .fld-head {
+    min-height: 0;
+}
+
+/* a field which keeps its label beside the control in a split card */
+.adm .split .fld.inline.beside {
+    display: grid;
+    grid-template-columns: var(--a-label) minmax(0, 1fr);
+    align-items: center;
+    justify-items: start;
+    column-gap: 16px;
+}
+
+.adm .split .fld.inline.beside > .fld-head {
+    min-height: 38px;
+}
+
+@media (max-width: 1100px) {
+    .adm .split {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* cards size their fields to their own width, so narrow cards get a shorter label column */
+.adm .card {
+    container-type: inline-size;
+}
+
+@container (max-width: 620px) {
+    .adm .fld.inline,
+    .adm .toggle-row {
+        --a-label: 130px;
+    }
+
+    .adm .fld.inline.k-duration {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+
+    .adm .fld.inline.k-duration > .fld-head {
+        min-height: 0;
+    }
+
+    /* room for the value bubble above the thumb, which would cover the label */
+    .adm .fld.inline.k-duration .slider {
+        padding-top: 38px;
+    }
+
+    .adm .fld.inline.k-duration .duration {
+        gap: 0;
     }
 }

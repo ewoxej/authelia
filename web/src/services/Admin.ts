@@ -270,6 +270,30 @@ export const banAdminIP = (ip: string, duration: number, reason: string) =>
 export const revokeAdminUserBan = (id: number) => request<undefined>("DELETE", `/bans/users/${id}`);
 export const revokeAdminIPBan = (id: number) => request<undefined>("DELETE", `/bans/ips/${id}`);
 
+export interface AdminFileEntry {
+    name: string;
+    directory: boolean;
+    size: number;
+    modified: string;
+}
+
+export interface AdminFileListing {
+    // Empty when the allowed directories are listed.
+    path: string;
+    // The directory above, empty for the allowed directories and null when already listing them.
+    parent: null | string;
+    entries: AdminFileEntry[];
+    truncated: boolean;
+}
+
+export const getAdminFiles = (path = "") =>
+    request<AdminFileListing>("GET", "/files" + query({ path: path || undefined }));
+
+export const createAdminDirectory = (path: string) => request<{ path: string }>("POST", "/files/directory", { path });
+
+// The secret is generated on the server and written to the file, it is never sent back.
+export const createAdminSecretFile = (path: string) => request<{ path: string }>("POST", "/files/secret", { path });
+
 export const getAdminAuthenticationLogs = (
     filter: { username?: string; q?: string; kind?: AdminLogKind },
     page: number,

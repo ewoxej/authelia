@@ -75,17 +75,52 @@ func (t *templates) protect(content []byte) []byte {
 	return []byte(strings.Join(lines, "\n"))
 }
 
+// mindentAuto is written by the web UI in place of the indentation of the mindent template function. The indentation is
+// worked out when the text is restored, from the column of the key the expression is the value of.
+const mindentAuto = "mindent auto"
+
 // restore replaces the placeholders in the text with the template expressions.
 func (t *templates) restore(text string) string {
 	if !t.enabled || !strings.Contains(text, t.prefix) {
 		return text
 	}
 
-	for placeholder, expression := range t.byPlaceholder {
-		text = strings.ReplaceAll(text, placeholder, expression.text)
+	lines := strings.Split(text, "\n")
+
+	for i, line := range lines {
+		if !strings.Contains(line, t.prefix) {
+			continue
+		}
+
+		for placeholder, expression := range t.byPlaceholder {
+			line = strings.ReplaceAll(line, placeholder, expression.text)
+		}
+
+		if strings.Contains(line, mindentAuto) {
+			line = strings.ReplaceAll(line, mindentAuto, fmt.Sprintf("mindent %d", keyColumn(line)+2))
+		}
+
+		lines[i] = line
 	}
 
-	return text
+	return strings.Join(lines, "\n")
+}
+
+// keyColumn returns the zero based column the key on the line starts at, after any sequence item markers. A multi-line
+// block below the key has to be indented further than this.
+func keyColumn(line string) (column int) {
+	for column < len(line) {
+		switch {
+		case line[column] == ' ':
+			column++
+		case strings.HasPrefix(line[column:], "- "):
+			column += 2
+		default:
+			return column
+		}
+	}
+
+	return column
 }
 
 // restoreValue replaces the placeholders in every string of a decoded value.
