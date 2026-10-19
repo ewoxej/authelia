@@ -32,7 +32,7 @@ type NotifierSMTP struct {
 	Password            string        `koanf:"password" yaml:"password,omitempty" toml:"password,omitempty" json:"password,omitempty" jsonschema:"title=Password" jsonschema_description:"The password for SMTP authentication."`
 	Identifier          string        `koanf:"identifier" yaml:"identifier,omitempty" toml:"identifier,omitempty" json:"identifier,omitempty" jsonschema:"default=localhost,title=Identifier" jsonschema_description:"The identifier used during the HELO/EHLO command."`
 	Sender              mail.Address  `koanf:"sender" yaml:"sender,omitempty" toml:"sender,omitempty" json:"sender,omitempty" jsonschema:"title=Sender" jsonschema_description:"The sender used for SMTP."`
-	Subject             string        `koanf:"subject" yaml:"subject,omitempty" toml:"subject,omitempty" json:"subject,omitempty" jsonschema:"default=[Authelia] {title},title=Subject" jsonschema_description:"The subject format used."`
+	Subject             string        `koanf:"subject" yaml:"subject,omitempty" toml:"subject,omitempty" json:"subject,omitempty" jsonschema:"default=[Janus] {title},title=Subject" jsonschema_description:"The subject format used."`
 	StartupCheckAddress mail.Address  `koanf:"startup_check_address" yaml:"startup_check_address,omitempty" toml:"startup_check_address,omitempty" json:"startup_check_address,omitempty" jsonschema:"default=Authelia Test <test@authelia.com>,title=Startup Check Address" jsonschema_description:"The address used for the recipient in the startup check."`
 	DisableRequireTLS   bool          `koanf:"disable_require_tls" yaml:"disable_require_tls" toml:"disable_require_tls" json:"disable_require_tls" jsonschema:"default=false,title=Disable Require TLS" jsonschema_description:"Disables the requirement to use TLS. This means security critical information and SMTP auth credentials will be sent in the clear due to an unencrypted connection. While this option exists, we heavily discourage it and do not support it."`
 	DisableHTMLEmails   bool          `koanf:"disable_html_emails" yaml:"disable_html_emails" toml:"disable_html_emails" json:"disable_html_emails" jsonschema:"default=false,title=Disable HTML Emails" jsonschema_description:"Disables the mixed content type of emails and only sends the plaintext version."`
@@ -50,7 +50,7 @@ type NotifierSMTP struct {
 var DefaultSMTPNotifierConfiguration = NotifierSMTP{
 	Address:             &AddressSMTP{Address{true, false, -1, 25, nil, &url.URL{Scheme: AddressSchemeSMTP, Host: "localhost:25"}}},
 	Timeout:             time.Second * 5,
-	Subject:             "[Authelia] {title}",
+	Subject:             "[Janus] {title}",
 	Identifier:          "localhost",
 	StartupCheckAddress: mail.Address{Name: "Authelia Test", Address: "test@authelia.com"},
 	TLS: &TLS{

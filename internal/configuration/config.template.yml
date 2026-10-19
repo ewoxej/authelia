@@ -241,7 +241,7 @@
   # enable_passkey_login: false
 
   ## The display name the browser should show the user for when using WebAuthn to login/register.
-  # display_name: 'Authelia'
+  # display_name: 'Janus'
 
   ## Conveyance preference controls if we collect the attestation statement including the AAGUID from the device.
   ## Options are none, indirect, direct.
@@ -1240,7 +1240,7 @@ session:
     # identifier: 'localhost'
 
     ## Subject configuration of the emails sent. {title} is replaced by the text from the notifier.
-    # subject: '[Authelia] {title}'
+    # subject: '[Janus] {title}'
 
     ## This address is used during the startup check to verify the email configuration is correct.
     ## It's not important what it is except if your email server only allows local delivery.

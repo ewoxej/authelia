@@ -26,6 +26,15 @@ export default defineConfig(({ mode }) => {
           })
         : undefined;
 
+    // Makes the backend treat requests from the development server as coming from its portal domain, so the sign-in
+    // pages work on localhost. The session cookie is rewritten to the development server's host.
+    const forwarded = env.VITE_DEV_FORWARDED_HOST
+        ? {
+              cookieDomainRewrite: { "*": "" },
+              headers: { "X-Forwarded-Host": env.VITE_DEV_FORWARDED_HOST, "X-Forwarded-Proto": "https" },
+          }
+        : {};
+
     return {
         base: "./",
         build: {
@@ -107,8 +116,8 @@ export default defineConfig(({ mode }) => {
             port: 3000,
             proxy: env.VITE_DEV_BACKEND
                 ? {
-                      "/api": { changeOrigin: false, target: env.VITE_DEV_BACKEND },
-                      "/locales": { changeOrigin: false, target: env.VITE_DEV_BACKEND },
+                      "/api": { changeOrigin: false, target: env.VITE_DEV_BACKEND, ...forwarded },
+                      "/locales": { changeOrigin: false, target: env.VITE_DEV_BACKEND, ...forwarded },
                   }
                 : undefined,
             watch: {

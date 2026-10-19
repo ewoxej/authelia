@@ -9,6 +9,16 @@ can be checked immediately.
 
 Then open http://127.0.0.1:3010/admin. A red banner shows that authentication is disabled.
 
+To check the sign-in flow and the real access rules (the `admins` group and a recently confirmed second factor), start it with
+authentication:
+
+```bash
+./dev/admin/run.sh --auth
+```
+
+The sign-in pages are at http://localhost:3010/. The development server tells the backend it's `idm.example.com`, so
+the session cookie works on localhost.
+
 ## How it works
 
 - `run.sh` builds Authelia with the `dev` build tag and starts it on `127.0.0.1:9095` with

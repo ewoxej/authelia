@@ -14,3 +14,9 @@ func TestForkVersion(t *testing.T) {
 		t.Fatalf("expected a semantic version in the VERSION file, got %q", version)
 	}
 }
+
+func TestUpstreamVersion(t *testing.T) {
+	if !regexp.MustCompile(`^v\d+\.\d+\.\d+$`).MatchString(UpstreamVersion) {
+		t.Fatalf("expected an Authelia release tag, got %q", UpstreamVersion)
+	}
+}

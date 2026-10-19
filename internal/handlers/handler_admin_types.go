@@ -13,6 +13,12 @@ import (
 	"github.com/authelia/authelia/v4/internal/model"
 )
 
+type adminSessionBody struct {
+	Confirmed       bool  `json:"confirmed"`
+	Expires         int64 `json:"expires"`
+	FactorKnowledge bool  `json:"factor_knowledge"`
+}
+
 type adminOverviewBody struct {
 	Version               string                    `json:"version"`
 	ForkVersion           string                    `json:"fork_version"`
@@ -24,6 +30,7 @@ type adminOverviewBody struct {
 	ConfigurationFiles    []admin.ConfigurationFile `json:"configuration_files"`
 	ConfigurationFilters  []string                  `json:"configuration_filters"`
 	Host                  string                    `json:"host"`
+	Theme                 string                    `json:"theme"`
 	Username              string                    `json:"username"`
 	DisplayName           string                    `json:"display_name"`
 	Components            []adminComponentBody      `json:"components"`

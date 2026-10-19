@@ -9,39 +9,46 @@ import { useTranslation } from "react-i18next";
 
 import { useNotifications } from "@contexts/NotificationsContext";
 import { useUserInfoGET } from "@hooks/UserInfo";
-import { UserSessionElevation, getUserSessionElevation } from "@services/UserSessionElevation";
+import { AdminSession, getAdminSession } from "@services/Admin";
+import { UserSessionElevation } from "@services/UserSessionElevation";
 import { adminDevNoAuth } from "@views/Admin/Common/DevMode";
 import { Card as AdminCard, CardHeader as AdminCardHeader, Spinner as AdminSpinner, Btn } from "@views/Admin/Common/ui";
-import IdentityVerificationDialog from "@views/Settings/Common/IdentityVerificationDialog";
 import SecondFactorDialog from "@views/Settings/Common/SecondFactorDialog";
+import "@layouts/login.css";
+import "@layouts/settings.css";
 
 export interface Props {
-    // Increment to force the identity verification to be performed again (i.e. after the elevation has expired).
+    // Increment to force the second factor to be confirmed again (i.e. after the confirmation has expired).
     generation: number;
     children: ReactNode;
 }
 
-type GateState = "checking" | "elevated" | "locked";
+type GateState = "checking" | "confirmed" | "locked";
 
-const isElevated = (elevation?: UserSessionElevation) =>
-    !!elevation && (elevation.elevated || elevation.skip_second_factor);
-
+/**
+ * Opens the administration area once the administrator has confirmed their second factor recently. Signing in with the
+ * second factor counts as a confirmation, after it has expired the second factor is asked for again.
+ */
 const AdminElevationGate = function (props: Props) {
     const { t: translate } = useTranslation("admin");
     const { createErrorNotification } = useNotifications();
 
     const [userInfo, fetchUserInfo] = useUserInfoGET();
-    // The result of the elevation check for a generation, a new generation requires a new check.
-    const [checked, setChecked] = useState<{ generation: number; elevated: boolean }>();
+    // The result of the confirmation check for a generation, a new generation requires a new check.
+    const [checked, setChecked] = useState<{ generation: number; confirmed: boolean }>();
+    // What the second factor dialog needs to know about the session, i.e. a passkey sign in confirms with the password.
     const [elevation, setElevation] = useState<UserSessionElevation>();
-    const [dialogSFOpening, setDialogSFOpening] = useState(false);
-    const [dialogIVOpening, setDialogIVOpening] = useState(false);
+    const [dialogOpening, setDialogOpening] = useState(false);
 
-    const refresh = useCallback(async () => {
-        const result = await getUserSessionElevation();
-        setElevation(result);
-
-        return result;
+    const applySession = useCallback((session: AdminSession) => {
+        setElevation({
+            can_skip_second_factor: false,
+            elevated: session.confirmed,
+            expires: session.expires,
+            factor_knowledge: session.factor_knowledge,
+            require_second_factor: true,
+            skip_second_factor: false,
+        });
     }, []);
 
     useEffect(() => {
@@ -57,86 +64,80 @@ const AdminElevationGate = function (props: Props) {
 
         const generation = props.generation;
 
-        refresh()
-            .then((result) => setChecked({ elevated: isElevated(result), generation }))
+        getAdminSession()
+            .then((result) => {
+                applySession(result);
+                setChecked({ confirmed: result.confirmed, generation });
+                setDialogOpening(!result.confirmed);
+            })
             .catch((err) => {
                 console.error(err);
-                setChecked({ elevated: false, generation });
+                setChecked({ confirmed: false, generation });
             });
-    }, [refresh, props.generation]);
+    }, [applySession, props.generation]);
 
-    const setElevated = () => setChecked({ elevated: true, generation: props.generation });
+    const handleClosed = useCallback(
+        (ok: boolean) => {
+            setDialogOpening(false);
+
+            if (!ok) {
+                return;
+            }
+
+            getAdminSession()
+                .then((result) => {
+                    applySession(result);
+                    setChecked({ confirmed: result.confirmed, generation: props.generation });
+
+                    if (!result.confirmed) {
+                        createErrorNotification(translate("Failed to confirm the second factor"));
+                    }
+                })
+                .catch((err) => {
+                    console.error(err);
+                    createErrorNotification(translate("Failed to confirm the second factor"));
+                });
+        },
+        [applySession, createErrorNotification, props.generation, translate],
+    );
 
     let state: GateState = "locked";
 
     if (checked?.generation !== props.generation) {
         state = "checking";
-    } else if (checked.elevated) {
-        state = "elevated";
+    } else if (checked.confirmed) {
+        state = "confirmed";
     }
 
-    const handleStart = () => {
-        refresh()
-            .then((result) => {
-                if (isElevated(result)) {
-                    setElevated();
-                } else {
-                    setDialogSFOpening(true);
-                }
-            })
-            .catch((err) => {
-                console.error(err);
-                createErrorNotification(translate("Failed to get the session elevation status"));
-            });
-    };
+    const locked = state !== "confirmed" && !adminDevNoAuth;
 
-    const handleSFDialogClosed = (ok: boolean, changed: boolean) => {
-        if (!ok) {
-            setDialogSFOpening(false);
-
+    // The second factor dialog is shared with the user settings, it uses their design while the gate is locked.
+    useEffect(() => {
+        if (!locked) {
             return;
         }
 
-        const next = changed ? refresh() : Promise.resolve(elevation);
+        document.documentElement.dataset.portalSkin = "";
 
-        next.then((result) => {
-            if (isElevated(result)) {
-                setElevated();
-            } else {
-                setDialogIVOpening(true);
-            }
-        }).catch((err) => {
-            console.error(err);
-            createErrorNotification(translate("Failed to get the session elevation status"));
-        });
-    };
+        return () => {
+            delete document.documentElement.dataset.portalSkin;
+        };
+    }, [locked]);
 
-    const handleIVDialogClosed = (ok: boolean) => {
-        setDialogIVOpening(false);
-
-        if (ok) {
-            setElevated();
-        }
-    };
-
-    if (state === "elevated" || adminDevNoAuth) {
+    if (!locked) {
         return <Fragment>{props.children}</Fragment>;
     }
 
     return (
         <Fragment>
             <SecondFactorDialog
+                confirm
+                description={translate("Confirm your second factor to open the administration area.")}
                 info={userInfo}
                 elevation={elevation}
-                opening={dialogSFOpening}
-                handleClosed={handleSFDialogClosed}
-                handleOpened={() => setDialogSFOpening(false)}
-            />
-            <IdentityVerificationDialog
-                opening={dialogIVOpening}
-                elevation={elevation}
-                handleClosed={handleIVDialogClosed}
-                handleOpened={() => setDialogIVOpening(false)}
+                opening={dialogOpening && !!elevation}
+                handleClosed={handleClosed}
+                handleOpened={() => setDialogOpening(false)}
             />
             <div className="wrap" style={{ margin: "40px auto 0", maxWidth: 460 }}>
                 <AdminCard>
@@ -144,11 +145,11 @@ const AdminElevationGate = function (props: Props) {
                         title={
                             <div className="title-row">
                                 <ShieldAlert size={18} strokeWidth={1.75} style={{ color: "var(--a-accent-tx)" }} />
-                                <h2>{translate("Identity Verification Required")}</h2>
+                                <h2>{translate("Confirm Your Second Factor")}</h2>
                             </div>
                         }
                         subtitle={translate(
-                            "The administration area contains sensitive information. Verify your identity to continue.",
+                            "The administration area contains sensitive information. Confirm your second factor to continue.",
                         )}
                     />
                     {state === "checking" ? (
@@ -158,9 +159,9 @@ const AdminElevationGate = function (props: Props) {
                             id="admin-verify-identity"
                             variant="primary"
                             style={{ width: "100%" }}
-                            onClick={handleStart}
+                            onClick={() => setDialogOpening(true)}
                         >
-                            {translate("Verify Identity")}
+                            {translate("Confirm")}
                         </Btn>
                     )}
                 </AdminCard>

@@ -237,7 +237,7 @@ it("offers no manage devices message for a registered push notification method",
         </MethodContainer>,
     );
 
-    expect(document.getElementById("register-link")).toBeEmptyDOMElement();
+    expect(document.getElementById("register-link")).not.toBeInTheDocument();
     expect(screen.queryByText("Manage devices")).not.toBeInTheDocument();
 });
 

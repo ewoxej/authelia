@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { ChevronLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
@@ -92,56 +93,55 @@ const ResetPasswordStep1 = function () {
     };
 
     return (
-        <MinimalLayout title={translate("Reset password")} id="reset-password-step1-stage">
-            <div id={"form-reset-password-username"}>
-                <div className="my-4 grid grid-cols-1 gap-4">
-                    <div className="w-full">
-                        <Label htmlFor="username-textfield">{translate("Username")}</Label>
-                        <Input
-                            id="username-textfield"
-                            disabled={loading}
-                            error={error}
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            onKeyDown={(ev) => {
-                                if (ev.key === "Enter") {
-                                    ev.preventDefault();
-                                    doInitiateResetPasswordProcess();
-                                }
-                            }}
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="w-full">
-                            <ComponentWithTooltip
-                                render={rateLimited}
-                                title={translate("You have made too many requests")}
-                            >
-                                <Button
-                                    id="reset-button"
-                                    variant="default"
-                                    disabled={loading || rateLimited}
-                                    className="w-full"
-                                    onClick={handleResetClick}
-                                >
-                                    {loading ? <Spinner size={20} className="mr-2 h-5 w-5" /> : null}
-                                    {translate("Reset")}
-                                </Button>
-                            </ComponentWithTooltip>
-                        </div>
-                        <div className="w-full">
-                            <Button
-                                id="cancel-button"
-                                variant="default"
-                                disabled={loading}
-                                className="w-full"
-                                onClick={handleCancelClick}
-                            >
-                                {translate("Cancel")}
-                            </Button>
-                        </div>
-                    </div>
+        <MinimalLayout
+            title={translate("Reset password")}
+            subtitle={translate("Enter your username. If it has an email address, a link is sent there.")}
+            id="reset-password-step1-stage"
+            lead={
+                <Button
+                    id="cancel-button"
+                    variant="ghost"
+                    className="l-back"
+                    disabled={loading}
+                    onClick={handleCancelClick}
+                >
+                    <ChevronLeft size={16} strokeWidth={1.8} />
+                    {translate("Back to sign in")}
+                </Button>
+            }
+        >
+            <div id={"form-reset-password-username"} className="l-form">
+                <div className="l-fld">
+                    <Label htmlFor="username-textfield">{translate("Username")}</Label>
+                    <Input
+                        id="username-textfield"
+                        disabled={loading}
+                        error={error}
+                        value={username}
+                        autoComplete="username"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        onChange={(e) => setUsername(e.target.value)}
+                        onKeyDown={(ev) => {
+                            if (ev.key === "Enter") {
+                                ev.preventDefault();
+                                doInitiateResetPasswordProcess();
+                            }
+                        }}
+                    />
                 </div>
+                <ComponentWithTooltip render={rateLimited} title={translate("You have made too many requests")}>
+                    <Button
+                        id="reset-button"
+                        variant="default"
+                        disabled={loading || rateLimited}
+                        className="l-block"
+                        onClick={handleResetClick}
+                    >
+                        {loading ? <Spinner size={16} className="h-4 w-4" /> : null}
+                        {translate("Send reset link")}
+                    </Button>
+                </ComponentWithTooltip>
             </div>
         </MinimalLayout>
     );

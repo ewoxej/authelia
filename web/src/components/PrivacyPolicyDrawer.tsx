@@ -7,7 +7,7 @@ import { Trans, useTranslation } from "react-i18next";
 import PrivacyPolicyLink from "@components/PrivacyPolicyLink";
 import { Button } from "@components/UI/Button";
 import { Sheet, SheetContent, SheetTitle } from "@components/UI/Sheet";
-import { EncodedName } from "@constants/constants";
+import { BrandName } from "@constants/constants";
 import { LocalStoragePrivacyPolicyAccepted } from "@constants/LocalStorage";
 import { usePersistentStorageValue } from "@hooks/PersistentStorage";
 import { getPrivacyPolicyEnabled, getPrivacyPolicyRequireAccept } from "@utils/Configuration";
@@ -32,7 +32,7 @@ const PrivacyPolicyDrawer = function () {
                     <p id="privacy-policy-drawer-description">
                         <Trans
                             i18nKey="You must view and accept the Privacy Policy before using {{authelia}}."
-                            values={{ authelia: atob(String.fromCharCode(...EncodedName)) }}
+                            values={{ authelia: BrandName }}
                             components={{
                                 policy: <PrivacyPolicyLink />,
                             }}

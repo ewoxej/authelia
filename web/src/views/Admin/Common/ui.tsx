@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { ComponentProps, ReactNode, useCallback, useEffect, useState } from "react";
+import { ComponentProps, ReactNode, useEffect, useState } from "react";
 
 import { AlertTriangle, Info, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -18,37 +18,35 @@ import "@views/Admin/admin.css";
 
 const cx = (...classes: (false | null | string | undefined)[]) => classes.filter(Boolean).join(" ");
 
-export type AdminTheme = "dark" | "light";
+const prefersDark = () => globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
 
-const themeStorageKey = "authelia-admin-theme";
-
-function initialTheme(): AdminTheme {
-    try {
-        const saved = localStorage.getItem(themeStorageKey);
-
-        if (saved === "dark" || saved === "light") {
-            return saved;
-        }
-    } catch {
-        // Storage may be unavailable, fall back to the system preference.
-    }
-
-    return globalThis.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
-}
-
-/** Applies the administration theme to the document while the administration area is mounted. */
-export function useAdminTheme() {
-    const [theme, setTheme] = useState<AdminTheme>(initialTheme);
+/**
+ * Applies the theme of the configuration ('light', 'dark', 'grey', 'oled' or 'auto') to the administration area while
+ * it's mounted. Until the configuration is loaded the theme of the portal is used.
+ */
+export function useAdminTheme(theme: string | undefined) {
+    const [dark, setDark] = useState(prefersDark);
 
     useEffect(() => {
-        document.documentElement.dataset.adminTheme = theme;
+        const query = globalThis.matchMedia?.("(prefers-color-scheme: dark)");
 
-        try {
-            localStorage.setItem(themeStorageKey, theme);
-        } catch {
-            // Ignore storage errors, the theme still applies for this visit.
+        if (!query) {
+            return;
         }
-    }, [theme]);
+
+        const listener = (e: MediaQueryListEvent) => setDark(e.matches);
+
+        query.addEventListener("change", listener);
+
+        return () => query.removeEventListener("change", listener);
+    }, []);
+
+    const configured = theme || document.documentElement.dataset.theme || "auto";
+    const resolved = configured === "auto" ? (dark ? "dark" : "light") : configured;
+
+    useEffect(() => {
+        document.documentElement.dataset.adminTheme = resolved;
+    }, [resolved]);
 
     useEffect(
         () => () => {
@@ -56,10 +54,6 @@ export function useAdminTheme() {
         },
         [],
     );
-
-    const toggle = useCallback(() => setTheme((t) => (t === "dark" ? "light" : "dark")), []);
-
-    return { theme, toggle };
 }
 
 type ButtonVariant = "danger" | "primary" | "secondary" | "tinted";

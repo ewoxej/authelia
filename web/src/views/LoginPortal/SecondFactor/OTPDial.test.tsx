@@ -6,20 +6,11 @@ import { render, screen } from "@testing-library/react";
 
 import OTPDial, { State } from "@views/LoginPortal/SecondFactor/OTPDial";
 
-vi.mock("@components/SuccessIcon", () => ({
-    default: () => <div data-testid="success-icon" />,
-}));
-
-vi.mock("@components/TimerIcon", () => ({
-    default: () => <div data-testid="timer-icon" />,
-}));
-
-vi.mock("@views/LoginPortal/SecondFactor/IconWithContext", () => ({
+vi.mock("@components/Orb", () => ({
     default: (props: any) => (
-        <div data-testid="icon-context">
-            {props.icon}
-            {props.children}
-        </div>
+        <div
+            data-testid={props.state === "ok" ? "success-icon" : props.state === "fail" ? "failure-icon" : "wait-icon"}
+        />
     ),
 }));
 
@@ -33,9 +24,9 @@ it("renders OTP input with correct digit count", () => {
     expect(inputs()).toHaveLength(6);
 });
 
-it("renders timer icon in idle state", () => {
-    render(<OTPDial passcode="" state={State.Idle} digits={6} period={30} onChange={vi.fn()} />);
-    expect(screen.getByTestId("timer-icon")).toBeInTheDocument();
+it("renders the refresh timer in idle state", () => {
+    const { container } = render(<OTPDial passcode="" state={State.Idle} digits={6} period={30} onChange={vi.fn()} />);
+    expect(container.querySelector(".l-timer")).toBeInTheDocument();
 });
 
 it("renders success icon in success state", () => {

@@ -89,14 +89,14 @@ const ConfigurationView = function () {
         try {
             await postAdminRestart();
             setRestartOpen(false);
-            createInfoNotification(translate("Authelia is restarting"));
+            createInfoNotification(translate("Janus is restarting"));
 
             if (await waitForRestart()) {
-                createSuccessNotification(translate("Authelia has restarted"));
+                createSuccessNotification(translate("Janus has restarted"));
                 globalThis.location.reload();
             }
         } catch (err) {
-            handleError(err, "Failed to restart Authelia");
+            handleError(err, "Failed to restart Janus");
         }
     };
 
@@ -112,8 +112,8 @@ const ConfigurationView = function () {
             <SaveDialog pending={pending} onClose={() => setPending(null)} />
             <ConfirmDialog
                 open={restartOpen}
-                title="Restart Authelia"
-                description={translate("Authelia will be restarted to apply the saved configuration.")}
+                title="Restart Janus"
+                description={translate("Janus will be restarted to apply the saved configuration.")}
                 confirmLabel="Restart"
                 destructive
                 onConfirm={handleRestart}
@@ -186,7 +186,7 @@ const ConfigurationView = function () {
                 <Note tone="warn">
                     <span style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 12 }}>
                         <span style={{ flex: 1 }}>
-                            {translate("The configuration was saved. Restart Authelia to apply the changes.")}
+                            {translate("The configuration was saved. Restart Janus to apply the changes.")}
                         </span>
                         {overview.restart_enabled ? (
                             <Btn size="sm" variant="danger" onClick={() => setRestartOpen(true)}>

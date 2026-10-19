@@ -32,6 +32,10 @@ const SecondFactorMethodOneTimePassword = lazy(
 const SecondFactorMethodWebAuthn = lazy(() => import("@views/Settings/Common/SecondFactorMethodWebAuthn"));
 
 type Props = {
+    // Always asks for the second factor, i.e. to confirm it before opening the administration area. The one-time code
+    // sent by email is not offered.
+    confirm?: boolean;
+    description?: string;
     elevation?: UserSessionElevation;
     info?: UserInfo;
     opening: boolean;
@@ -83,7 +87,7 @@ function reducer(state: State, action: Action): State {
 }
 
 const SecondFactorDialog = function (props: Props) {
-    const { elevation, handleClosed, handleOpened, info, opening } = props;
+    const { confirm, description, elevation, handleClosed, handleOpened, info, opening } = props;
     const { t: translate } = useTranslation(["settings", "portal"]);
 
     const [state, dispatch] = useReducer(reducer, initialState);
@@ -157,7 +161,9 @@ const SecondFactorDialog = function (props: Props) {
         if (closing || !opening || !elevation) return;
 
         const shouldSkip =
-            (elevation.skip_second_factor || !elevation.require_second_factor) && !elevation.can_skip_second_factor;
+            !confirm &&
+            (elevation.skip_second_factor || !elevation.require_second_factor) &&
+            !elevation.can_skip_second_factor;
         if (shouldSkip) {
             resetState();
             handleClosed(true, false);
@@ -171,8 +177,20 @@ const SecondFactorDialog = function (props: Props) {
 
         if (!elevation.factor_knowledge) {
             dispatch({ payload: 1, type: "setActiveStep" });
+        } else if (confirm && info) {
+            // When there is a single method to confirm with, there is nothing to select.
+            const methods = [
+                info.has_totp ? SecondFactorMethod.TOTP : undefined,
+                info.has_webauthn && browserSupportsWebAuthn() ? SecondFactorMethod.WebAuthn : undefined,
+                info.has_duo ? SecondFactorMethod.MobilePush : undefined,
+            ].filter((m) => m !== undefined);
+
+            if (methods.length === 1) {
+                dispatch({ payload: methods[0], type: "setMethod" });
+                dispatch({ payload: 1, type: "setActiveStep" });
+            }
         }
-    }, [closing, resetState, handleClosed, open, elevation, opening, handleOpened]);
+    }, [closing, resetState, handleClosed, open, elevation, opening, handleOpened, confirm, info]);
 
     const getAuthComponent = useCallback(() => {
         if (!elevation?.factor_knowledge) {
@@ -207,7 +225,7 @@ const SecondFactorDialog = function (props: Props) {
         if (activeStep === 0) {
             return (
                 <div className="flex flex-col items-center justify-center gap-4 my-16">
-                    {elevation.can_skip_second_factor ? (
+                    {elevation.can_skip_second_factor && !confirm ? (
                         <Fragment>
                             <Button variant={"outline"} onClick={handleOneTimeCode}>
                                 {translate("Email One-Time Code")}
@@ -254,9 +272,10 @@ const SecondFactorDialog = function (props: Props) {
                 <DialogHeader>
                     <DialogTitle>{translate("Identity Verification")}</DialogTitle>
                     <DialogDescription>
-                        {translate(
-                            "In order to perform this action, policy enforcement requires that two-factor authentication is performed",
-                        )}
+                        {description ??
+                            translate(
+                                "In order to perform this action, policy enforcement requires that two-factor authentication is performed",
+                            )}
                     </DialogDescription>
                 </DialogHeader>
                 <Stepper

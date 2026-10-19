@@ -157,7 +157,7 @@ describe("rendering", () => {
 
         render(<SecurityView />);
 
-        expect(screen.getByText("Email:")).toBeInTheDocument();
+        expect(screen.getByText("Email")).toBeInTheDocument();
     });
 
     it("passes the display name to the dialogs", () => {

@@ -7,7 +7,6 @@ import { useCallback, useEffect, useReducer, useRef } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 
-import WebAuthnTryIcon from "@components/WebAuthnTryIcon";
 import { RedirectionURL } from "@constants/SearchParams";
 import { useAbortSignal } from "@hooks/Abort";
 import { useFlow } from "@hooks/Flow";
@@ -17,6 +16,7 @@ import { AssertionResult, AssertionResultFailureString, WebAuthnTouchState } fro
 import { AuthenticationLevel } from "@services/State";
 import { getWebAuthnOptions, getWebAuthnResult, postWebAuthnResponse } from "@services/WebAuthn";
 import MethodContainer, { State as MethodContainerState } from "@views/LoginPortal/SecondFactor/MethodContainer";
+import WebAuthnWait from "@views/LoginPortal/SecondFactor/WebAuthnWait";
 
 export interface Props {
     id: string;
@@ -146,7 +146,7 @@ const WebAuthnMethod = function (props: Props) {
             state={methodState}
             onRegisterClick={props.onRegisterClick}
         >
-            <WebAuthnTryIcon onRetryClick={doInitiateSignIn} webauthnTouchState={state} />
+            <WebAuthnWait onRetryClick={doInitiateSignIn} webauthnTouchState={state} />
         </MethodContainer>
     );
 };

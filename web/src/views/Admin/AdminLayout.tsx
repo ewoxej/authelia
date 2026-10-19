@@ -4,22 +4,13 @@
 
 import { ReactNode, useEffect, useState } from "react";
 
-import {
-    Activity,
-    Ban,
-    ChevronRight,
-    LayoutGrid,
-    Moon,
-    Shield,
-    SlidersHorizontal,
-    Sun,
-    User,
-    Users,
-} from "lucide-react";
+import { Activity, Ban, ChevronRight, LayoutGrid, SlidersHorizontal, User, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router";
 
-import { EncodedName } from "@constants/constants";
+import JanusLogo from "@components/JanusLogo";
+import JanusWordmark from "@components/JanusWordmark";
+import { BrandName } from "@constants/constants";
 import {
     AdminActivitySubRoute,
     AdminBansSubRoute,
@@ -31,7 +22,7 @@ import {
 import { useRouterNavigate } from "@hooks/RouterNavigate";
 import { AdminOverview } from "@services/Admin";
 import { adminDevNoAuth } from "@views/Admin/Common/DevMode";
-import { Avatar, IconBtn, Key, useAdminTheme } from "@views/Admin/Common/ui";
+import { Avatar, Key, useAdminTheme } from "@views/Admin/Common/ui";
 import { sections, wholeFileSection } from "@views/Admin/Configuration/Sections";
 
 export const adminConfigurationPath = (section: string) => `${AdminRoute}${AdminConfigurationSubRoute}/${section}`;
@@ -40,7 +31,7 @@ const iconProps = { "aria-hidden": true, size: 18, strokeWidth: 1.75 } as const;
 
 const AdminLayout = function (props: { overview?: AdminOverview; children: ReactNode }) {
     const { t: translate } = useTranslation("admin");
-    const { theme, toggle } = useAdminTheme();
+    useAdminTheme(props.overview?.theme);
     const location = useLocation();
     const navigate = useRouterNavigate();
 
@@ -61,7 +52,7 @@ const AdminLayout = function (props: { overview?: AdminOverview; children: React
 
     useEffect(() => {
         document.title = translate("Administration - {{authelia}}", {
-            authelia: atob(String.fromCodePoint(...EncodedName)),
+            authelia: BrandName,
         });
     }, [translate]);
 
@@ -84,6 +75,8 @@ const AdminLayout = function (props: { overview?: AdminOverview; children: React
     );
 
     const configurationSection = location.pathname.slice(configurationBase.length + 1) || sections[0].id;
+    // The domain the administration area is opened on, which is the one that matters with several cookie domains.
+    const host = globalThis.location?.host || props.overview?.host;
     const user = props.overview?.display_name || props.overview?.username || "";
 
     return (
@@ -91,24 +84,17 @@ const AdminLayout = function (props: { overview?: AdminOverview; children: React
             <header className="topbar">
                 <button type="button" className="brand" onClick={() => navigate(AdminRoute)}>
                     <span className="brand-mark">
-                        <Shield {...iconProps} />
+                        <JanusLogo size={32} tone={adminDevNoAuth ? "dev" : "accent"} />
                     </span>
-                    <span className="brand-name">{atob(String.fromCodePoint(...EncodedName))}</span>
+                    <JanusWordmark className="brand-name" />
                     <Key>admin</Key>
                 </button>
                 <div className="spacer" />
-                {props.overview?.host ? (
+                {host ? (
                     <span className="mono tx3 host" style={{ fontSize: 12 }}>
-                        {props.overview.host}
+                        {host}
                     </span>
                 ) : null}
-                <IconBtn
-                    id="admin-theme"
-                    aria-label={translate(theme === "dark" ? "Switch to light theme" : "Switch to dark theme")}
-                    onClick={toggle}
-                >
-                    {theme === "dark" ? <Sun {...iconProps} /> : <Moon {...iconProps} />}
-                </IconBtn>
                 {user ? <Avatar name={user} me size={32} /> : null}
             </header>
 

@@ -12,9 +12,9 @@ import LogoutButton from "@components/LogoutButton";
 import SwitchUserButton from "@components/SwitchUserButton";
 import { Button, ButtonColor } from "@components/UI/Button";
 import { Card } from "@components/UI/Card";
-import { Separator } from "@components/UI/Separator";
 import { Spinner } from "@components/UI/Spinner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/UI/Tooltip";
+import UserChip from "@components/UserChip";
 import { ConsentCompletionSubRoute, ConsentRoute, IndexRoute } from "@constants/Routes";
 import {
     Decision,
@@ -318,18 +318,16 @@ function DecisionFormView({ state, userInfo }: Props) {
     return (
         <LoginLayout
             id={"openid-consent-decision-stage"}
-            title={`${translate("Hi", { ns: "portal" })} ${userInfo.display_name}`}
-            subtitle={translate("Consent Request")}
+            title={translate("Consent Request")}
             maxWidth={"sm"}
+            lead={
+                <UserChip name={userInfo.display_name}>
+                    <SwitchUserButton />
+                    <LogoutButton />
+                </UserChip>
+            }
         >
             <div className="flex w-full flex-col gap-4">
-                <div className="flex w-full items-center justify-center">
-                    <LogoutButton />
-                    <div className="flex h-4 items-center">
-                        <Separator orientation={"vertical"} />
-                    </div>
-                    <SwitchUserButton />
-                </div>
                 <form action={submitDecision} className="flex w-full flex-col gap-6">
                     <DecisionFormRequest
                         response={response}

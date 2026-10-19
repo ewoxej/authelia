@@ -31,6 +31,15 @@ export interface AdminConfigurationFile {
     writable: boolean;
 }
 
+export interface AdminSession {
+    // Whether the second factor was confirmed recently enough to use the administration API.
+    confirmed: boolean;
+    // Unix time the confirmation stops granting access.
+    expires: number;
+    // Whether the session has a knowledge factor (password), otherwise the password confirms the session.
+    factor_knowledge: boolean;
+}
+
 export interface AdminOverview {
     version: string;
     fork_version: string;
@@ -42,6 +51,8 @@ export interface AdminOverview {
     configuration_files: AdminConfigurationFile[] | null;
     configuration_filters: null | string[];
     host: string;
+    // The portal theme from the configuration, which the administration area uses too.
+    theme: string;
     username: string;
     display_name: string;
     components: AdminComponent[] | null;
@@ -244,6 +255,7 @@ function query(params: Record<string, number | string | undefined>) {
 
 const user = (username: string) => `/users/${encodeURIComponent(username)}`;
 
+export const getAdminSession = () => request<AdminSession>("GET", "/session");
 export const getAdminOverview = () => request<AdminOverview>("GET", "/overview");
 export const postAdminRestart = () => request<undefined>("POST", "/restart");
 

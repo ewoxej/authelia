@@ -105,7 +105,7 @@ const accessControlRuleFields: FieldDef[] = [
 
 const sessionCookieFields: FieldDef[] = [
     { kind: "text", label: "Domain", path: "domain", placeholder: "example.com" },
-    { kind: "text", label: "Authelia URL", path: "authelia_url", placeholder: "https://auth.example.com" },
+    { kind: "text", label: "Portal URL", path: "authelia_url", placeholder: "https://auth.example.com" },
     { kind: "text", label: "Default redirection URL", path: "default_redirection_url" },
     { kind: "text", label: "Cookie name", path: "name" },
     { kind: "select", label: "Same site", options: ["lax", "strict", "none"], path: "same_site" },
@@ -375,7 +375,7 @@ export const sections: SectionDef[] = [
                 wide: true,
             },
             {
-                description: "Where Authelia writes its log and how much detail goes in.",
+                description: "Where Janus writes its log and how much detail goes in.",
                 fields: [
                     {
                         defaultValue: "info",
@@ -517,7 +517,7 @@ export const sections: SectionDef[] = [
                 ],
                 kind: "group",
                 label: "Redis",
-                offNote: "Sessions are kept in memory. Restarting Authelia signs everyone out.",
+                offNote: "Sessions are kept in memory. Restarting Janus signs everyone out.",
                 togglePath: "session.redis",
             },
         ],
@@ -685,7 +685,7 @@ export const sections: SectionDef[] = [
                         label: "Enable passkey login",
                         path: "webauthn.enable_passkey_login",
                     },
-                    { kind: "text", label: "Display name", path: "webauthn.display_name", placeholder: "Authelia" },
+                    { kind: "text", label: "Display name", path: "webauthn.display_name", placeholder: "Janus" },
                     {
                         kind: "select",
                         label: "Attestation conveyance",
@@ -867,7 +867,7 @@ export const sections: SectionDef[] = [
                         kind: "text",
                         label: "Sender",
                         path: "notifier.smtp.sender",
-                        placeholder: "Authelia <admin@example.com>",
+                        placeholder: "Janus <admin@example.com>",
                     },
                     { kind: "text", label: "Username", path: "notifier.smtp.username" },
                     { kind: "password", label: "Password", path: "notifier.smtp.password" },
@@ -876,7 +876,7 @@ export const sections: SectionDef[] = [
                         kind: "text",
                         label: "Subject",
                         path: "notifier.smtp.subject",
-                        placeholder: "[Authelia] {title}",
+                        placeholder: "[Janus] {title}",
                     },
                     {
                         invert: true,

@@ -18,7 +18,7 @@ type WebAuthn struct {
 	EnablePasskeyLogin   bool   `koanf:"enable_passkey_login" yaml:"enable_passkey_login" toml:"enable_passkey_login" json:"enable_passkey_login" jsonschema:"default=false,title=Enable Passkey Logins" jsonschema_description:"Allows users to sign in via Passkeys."`
 	EnablePasskey2FA     bool   `koanf:"experimental_enable_passkey_uv_two_factors" yaml:"experimental_enable_passkey_uv_two_factors" toml:"experimental_enable_passkey_uv_two_factors" json:"experimental_enable_passkey_uv_two_factors" jsonschema:"default=false,title=Experimental: Enable User Verified Passkey Second Factor" jsonschema_description:"This option is experimental and WILL be removed. When true this will consider a Passkey login where the WebAuthn user verification requirement is met as being a single event 2FA login."`
 	EnablePasskeyUpgrade bool   `koanf:"experimental_enable_passkey_upgrade" yaml:"experimental_enable_passkey_upgrade" toml:"experimental_enable_passkey_upgrade" json:"experimental_enable_passkey_upgrade" jsonschema:"default=false,title=Experimental: Enable User Verified Passkey Second Factor" jsonschema_description:"When true this will attempt to automatically upgrade a WebAuthn credential to a Passkey when the browser or authenticator does not report a newly registered WebAuthn credential to be a Passkey."`
-	DisplayName          string `koanf:"display_name" yaml:"display_name,omitempty" toml:"display_name,omitempty" json:"display_name,omitempty" jsonschema:"default=Authelia,title=Display Name" jsonschema_description:"The display name attribute for the WebAuthn relying party."`
+	DisplayName          string `koanf:"display_name" yaml:"display_name,omitempty" toml:"display_name,omitempty" json:"display_name,omitempty" jsonschema:"default=Janus,title=Display Name" jsonschema_description:"The display name attribute for the WebAuthn relying party."`
 
 	ConveyancePreference protocol.ConveyancePreference `koanf:"attestation_conveyance_preference" yaml:"attestation_conveyance_preference,omitempty" toml:"attestation_conveyance_preference,omitempty" json:"attestation_conveyance_preference,omitempty" jsonschema:"default=indirect,enum=none,enum=indirect,enum=direct,title=Conveyance Preference" jsonschema_description:"The default conveyance preference for all WebAuthn credentials."`
 
@@ -60,7 +60,7 @@ type WebAuthnFiltering struct {
 
 // DefaultWebAuthnConfiguration describes the default values for the WebAuthn.
 var DefaultWebAuthnConfiguration = WebAuthn{
-	DisplayName: "Authelia",
+	DisplayName: "Janus",
 	Timeout:     time.Second * 60,
 
 	ConveyancePreference: protocol.PreferIndirectAttestation,

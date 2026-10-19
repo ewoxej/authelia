@@ -10,6 +10,10 @@ import (
 	"strings"
 )
 
+// UpstreamVersion is the Authelia release this fork is based on. A local build has no release information, so the
+// version is shown as this instead of the one from the build. Update it when merging a newer release.
+const UpstreamVersion = "v4.39.28"
+
 //go:embed VERSION
 var forkVersion string
 

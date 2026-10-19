@@ -7,7 +7,7 @@ package schema
 // TOTP represents the configuration related to TOTP options.
 type TOTP struct {
 	Disable          bool   `koanf:"disable" yaml:"disable" toml:"disable" json:"disable" jsonschema:"default=false,title=Disable" jsonschema_description:"Disables the TOTP 2FA functionality."`
-	Issuer           string `koanf:"issuer" yaml:"issuer,omitempty" toml:"issuer,omitempty" json:"issuer,omitempty" jsonschema:"default=Authelia,title=Issuer" jsonschema_description:"The issuer value for generated TOTP keys."`
+	Issuer           string `koanf:"issuer" yaml:"issuer,omitempty" toml:"issuer,omitempty" json:"issuer,omitempty" jsonschema:"default=Janus,title=Issuer" jsonschema_description:"The issuer value for generated TOTP keys."`
 	DefaultAlgorithm string `koanf:"algorithm" yaml:"algorithm,omitempty" toml:"algorithm,omitempty" json:"algorithm,omitempty" jsonschema:"default=SHA1,enum=SHA1,enum=SHA256,enum=SHA512,title=Algorithm" jsonschema_description:"The algorithm value for generated TOTP keys."`
 	DefaultDigits    int    `koanf:"digits" yaml:"digits" toml:"digits" json:"digits" jsonschema:"default=6,enum=6,enum=8,title=Digits" jsonschema_description:"The digits value for generated TOTP keys."`
 	DefaultPeriod    int    `koanf:"period" yaml:"period" toml:"period" json:"period" jsonschema:"default=30,title=Period" jsonschema_description:"The period value for generated TOTP keys."`
@@ -25,7 +25,7 @@ var defaultTOTPSkew = 1
 
 // DefaultTOTPConfiguration represents default configuration parameters for TOTP generation.
 var DefaultTOTPConfiguration = TOTP{
-	Issuer:            "Authelia",
+	Issuer:            "Janus",
 	DefaultAlgorithm:  TOTPAlgorithmSHA1,
 	DefaultDigits:     6,
 	DefaultPeriod:     30,

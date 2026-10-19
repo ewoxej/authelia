@@ -229,17 +229,25 @@ func handlerMain(config *schema.Configuration, providers middlewares.Providers) 
 		adminBuilder := middlewares.NewBridgeBuilder(*config, providers).
 			WithPreMiddlewares(middlewares.SecurityHeadersBase, middlewares.SecurityHeadersNoStore, middlewares.SecurityHeadersCSPNone)
 
+		// The confirmation status is available before the second factor is confirmed.
+		adminSessionBuilder := middlewares.NewBridgeBuilder(*config, providers).
+			WithPreMiddlewares(middlewares.SecurityHeadersBase, middlewares.SecurityHeadersNoStore, middlewares.SecurityHeadersCSPNone)
+
 		switch devNoAuth, err := admin.DevNoAuth(config); {
 		case err != nil:
 			logging.Logger().WithError(err).Error("Administration API authentication can't be disabled")
-			adminBuilder = adminBuilder.WithPostMiddlewares(middlewares.RequireAdmin, middlewares.RequireElevated)
+			adminBuilder = adminBuilder.WithPostMiddlewares(middlewares.RequireAdmin, middlewares.RequireAdminConfirmed)
+			adminSessionBuilder = adminSessionBuilder.WithPostMiddlewares(middlewares.RequireAdmin)
 		case devNoAuth:
 			logging.Logger().Warn("===> The administration API authentication is DISABLED for development. Never use this outside of a development environment. <===")
 		default:
-			adminBuilder = adminBuilder.WithPostMiddlewares(middlewares.RequireAdmin, middlewares.RequireElevated)
+			adminBuilder = adminBuilder.WithPostMiddlewares(middlewares.RequireAdmin, middlewares.RequireAdminConfirmed)
+			adminSessionBuilder = adminSessionBuilder.WithPostMiddlewares(middlewares.RequireAdmin)
 		}
 
 		middlewareAdmin := adminBuilder.Build()
+
+		r.GET("/api/admin/session", adminSessionBuilder.Build()(handlers.AdminSessionGET))
 
 		r.GET("/api/admin/overview", middlewareAdmin(handlers.AdminOverviewGET))
 		r.POST("/api/admin/restart", middlewareAdmin(handlers.AdminRestartPOST))

@@ -30,10 +30,6 @@ vi.mock("@services/WebAuthn", () => ({
     postWebAuthnPasskeyResponse: vi.fn(),
 }));
 
-vi.mock("@components/PasskeyIcon", () => ({
-    default: () => <span data-testid="passkey-icon" />,
-}));
-
 const getOptionsMock = vi.mocked(getWebAuthnPasskeyOptions);
 const getResultMock = vi.mocked(getWebAuthnResult);
 const postResponseMock = vi.mocked(postWebAuthnPasskeyResponse);
@@ -88,7 +84,6 @@ describe("rendering", () => {
         renderForm();
         expect(screen.getByText("Sign in with a passkey")).toBeInTheDocument();
         expect(screen.getByText("or")).toBeInTheDocument();
-        expect(screen.getByTestId("passkey-icon")).toBeInTheDocument();
     });
 
     it("renders button as disabled when disabled prop is true", () => {

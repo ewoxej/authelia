@@ -250,7 +250,7 @@ const Browser = function (props: Props) {
                     {creating === "secret" ? (
                         <span className="help">
                             {translate(
-                                "A random secret is generated and written to a new file which only the user running Authelia can read. It is not shown.",
+                                "A random secret is generated and written to a new file which only the user running Janus can read. It is not shown.",
                             )}
                         </span>
                     ) : null}

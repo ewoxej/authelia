@@ -71,7 +71,7 @@ func TestWebAuthnRegistrationPUT(t *testing.T) {
 						Return(nil, nil),
 				)
 			},
-			regexp.MustCompile(`^\{"status":"OK","data":\{"publicKey":\{"rp":\{"name":"Authelia","id":"example.com"},"user":\{"name":"john","displayName":"john","id":"ZytlJlVuWzdgN2BxTyI8Uy9uS2xpJSdsT2ZsJUA5UEBve1c2NENCKDNSWWphaGVCJEhlQ3wpYT9HQGBwIi8zQA"},"challenge":"[a-zA-Z0-9/_-]+","pubKeyCredParams":\[\{"type":"public-key","alg":-48},\{"type":"public-key","alg":-49},\{"type":"public-key","alg":-50},\{"type":"public-key","alg":-8},\{"type":"public-key","alg":-7},\{"type":"public-key","alg":-257},\{"type":"public-key","alg":-35},\{"type":"public-key","alg":-36},\{"type":"public-key","alg":-258},\{"type":"public-key","alg":-259},\{"type":"public-key","alg":-37},\{"type":"public-key","alg":-38},\{"type":"public-key","alg":-39}],"timeout":\d+,"attestation":"indirect","extensions":{"credProps":true}}}}$`),
+			regexp.MustCompile(`^\{"status":"OK","data":\{"publicKey":\{"rp":\{"name":"Janus","id":"example.com"},"user":\{"name":"john","displayName":"john","id":"ZytlJlVuWzdgN2BxTyI8Uy9uS2xpJSdsT2ZsJUA5UEBve1c2NENCKDNSWWphaGVCJEhlQ3wpYT9HQGBwIi8zQA"},"challenge":"[a-zA-Z0-9/_-]+","pubKeyCredParams":\[\{"type":"public-key","alg":-48},\{"type":"public-key","alg":-49},\{"type":"public-key","alg":-50},\{"type":"public-key","alg":-8},\{"type":"public-key","alg":-7},\{"type":"public-key","alg":-257},\{"type":"public-key","alg":-35},\{"type":"public-key","alg":-36},\{"type":"public-key","alg":-258},\{"type":"public-key","alg":-259},\{"type":"public-key","alg":-37},\{"type":"public-key","alg":-38},\{"type":"public-key","alg":-39}],"timeout":\d+,"attestation":"indirect","extensions":{"credProps":true}}}}$`),
 			fasthttp.StatusOK,
 			nil,
 		},

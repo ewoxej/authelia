@@ -2,8 +2,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { act, render } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { act, render, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router";
 
 import { useAutheliaState } from "@hooks/State";
 import SettingsRouter from "@views/Settings/SettingsRouter";
@@ -31,10 +31,6 @@ vi.mock("@constants/Routes", () => ({
 
 vi.mock("@layouts/SettingsLayout", () => ({
     default: (props: any) => <div>{props.children}</div>,
-}));
-
-vi.mock("@views/Settings/SettingsView", () => ({
-    default: () => <div data-testid="settings-view" />,
 }));
 
 vi.mock("@views/Settings/Security/SecurityView", () => ({
@@ -117,4 +113,24 @@ it("authenticated state does not call navigate", async () => {
         );
     });
     expect(mockNavigate).not.toHaveBeenCalled();
+});
+
+it("opens the security page from the settings root", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.mocked(useAutheliaState).mockReturnValue([
+        { authentication_level: 1, factor_knowledge: true, username: "test" },
+        vi.fn(),
+        false,
+        undefined,
+    ]);
+    await act(async () => {
+        render(
+            <MemoryRouter initialEntries={["/settings"]}>
+                <Routes>
+                    <Route path="/settings/*" element={<SettingsRouter />} />
+                </Routes>
+            </MemoryRouter>,
+        );
+    });
+    expect(screen.getByTestId("security-view")).toBeInTheDocument();
 });

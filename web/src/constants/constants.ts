@@ -7,6 +7,9 @@ export const GoogleAuthenticator = {
     googlePlay: "https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2&hl=en_us",
 };
 
+// The name of this distribution, shown in the interface. EncodedName and EncodedURL are the upstream project it's based on.
+export const BrandName = "Janus";
+
 export const EncodedName = [81, 88, 86, 48, 97, 71, 86, 115, 97, 87, 69, 61];
 export const EncodedURL = [
     97, 72, 82, 48, 99, 72, 77, 54, 76, 121, 57, 51, 100, 51, 99, 117, 89, 88, 86, 48, 97, 71, 86, 115, 97, 87, 69, 117,

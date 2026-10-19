@@ -63,17 +63,18 @@ const OverviewView = function () {
         try {
             await postAdminRestart();
             setRestartOpen(false);
-            createInfoNotification(translate("Authelia is restarting"));
+            createInfoNotification(translate("Janus is restarting"));
 
             if (await waitForRestart()) {
-                createSuccessNotification(translate("Authelia has restarted"));
+                createSuccessNotification(translate("Janus has restarted"));
                 globalThis.location.reload();
             }
         } catch (err) {
-            handleError(err, "Failed to restart Authelia");
+            handleError(err, "Failed to restart Janus");
         }
     };
 
+    const host = globalThis.location?.host || overview.host;
     const rangeLabel = translate(rangeLabels[range]);
     const locale = i18n.language;
     const average = stats && stats.buckets.length ? (stats.total / stats.buckets.length).toFixed(1) : "—";
@@ -82,7 +83,7 @@ const OverviewView = function () {
         <section className="wrap">
             <ConfirmDialog
                 open={restartOpen}
-                title="Restart Authelia"
+                title="Restart Janus"
                 description={translate(
                     "All services will be stopped and started again with the current configuration files. Users stay signed in when the session storage is persistent (i.e. Redis).",
                 )}
@@ -95,10 +96,10 @@ const OverviewView = function () {
             <PageHeader
                 title={translate("Overview")}
                 description={
-                    overview.host ? (
+                    host ? (
                         <>
                             {translate("Instance health and authentication traffic for")}{" "}
-                            <span className="mono">{overview.host}</span>.
+                            <span className="mono">{host}</span>.
                         </>
                     ) : (
                         translate("Instance health and authentication traffic.")

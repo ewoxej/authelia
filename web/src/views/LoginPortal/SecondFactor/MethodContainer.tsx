@@ -2,11 +2,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { Fragment, ReactNode } from "react";
+import { ReactNode } from "react";
 
+import { Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import InformationIcon from "@components/InformationIcon";
 import Authenticated from "@views/LoginPortal/Authenticated";
 
 export enum State {
@@ -55,32 +55,32 @@ const DefaultMethodContainer = function (props: Props) {
             break;
     }
 
+    const showSelect = props.onSelectClick && props.registered;
+    const showRegister =
+        (props.onRegisterClick && props.title !== "Push Notification") ||
+        (props.onRegisterClick && props.title === "Push Notification" && props.duoSelfEnrollment);
+
     return (
         <div id={props.id}>
-            <h6 className="text-xl font-medium">{props.title}</h6>
-            <div id={"2fa-container"} className={`${stateClass} h-[200px]`}>
-                <div className="flex h-full w-full flex-wrap content-center items-center justify-center">
-                    {container}
-                </div>
+            <h2 className="sr-only">{props.title}</h2>
+            <div id={"2fa-container"} className={stateClass}>
+                {container}
             </div>
-            {props.onSelectClick && props.registered ? (
-                <button
-                    id={"selection-link"}
-                    className="text-base text-primary underline-offset-4 hover:underline"
-                    onClick={props.onSelectClick}
-                >
-                    {translate("Select a Device")}
-                </button>
-            ) : null}
-            {(props.onRegisterClick && props.title !== "Push Notification") ||
-            (props.onRegisterClick && props.title === "Push Notification" && props.duoSelfEnrollment) ? (
-                <button
-                    id={"register-link"}
-                    className="text-base text-primary underline-offset-4 hover:underline"
-                    onClick={props.onRegisterClick}
-                >
-                    {registerMessage}
-                </button>
+            {showSelect || (showRegister && registerMessage) ? (
+                <div className="l-links">
+                    {showSelect ? (
+                        <button id={"selection-link"} type="button" className="l-link" onClick={props.onSelectClick}>
+                            {translate("Select a Device")}
+                        </button>
+                    ) : (
+                        <span />
+                    )}
+                    {showRegister && registerMessage ? (
+                        <button id={"register-link"} type="button" className="l-link" onClick={props.onRegisterClick}>
+                            {registerMessage}
+                        </button>
+                    ) : null}
+                </div>
             ) : null}
         </div>
     );
@@ -103,15 +103,14 @@ function NotRegisteredContainer(props: NotRegisteredContainerProps) {
     }
 
     return (
-        <Fragment>
-            <div className="mb-4 flex basis-full justify-center">
-                <InformationIcon />
-            </div>
-            <p className="text-[#5858ff]">
-                {translate("The resource you're attempting to access requires two-factor authentication")}
-            </p>
-            <p className="text-[#5858ff]">{infoText}</p>
-        </Fragment>
+        <div className="l-alert info">
+            <Info size={16} strokeWidth={1.8} aria-hidden />
+            <span>
+                <span>{translate("The resource you're attempting to access requires two-factor authentication")}</span>
+                {". "}
+                <span>{infoText}</span>.
+            </span>
+        </div>
     );
 }
 
@@ -122,10 +121,10 @@ interface MethodContainerProps {
 
 function MethodContainer(props: MethodContainerProps) {
     return (
-        <Fragment>
-            <div className="mb-4">{props.children}</div>
-            <p>{props.explanation}</p>
-        </Fragment>
+        <div className="l-wait">
+            {props.children}
+            {props.explanation ? <p>{props.explanation}</p> : null}
+        </div>
     );
 }
 

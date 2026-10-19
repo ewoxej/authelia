@@ -2,15 +2,13 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { Fragment, useId } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { OTPField } from "@base-ui/react/otp-field";
 import { useTranslation } from "react-i18next";
 
-import SuccessIcon from "@components/SuccessIcon";
-import TimerIcon from "@components/TimerIcon";
+import Orb from "@components/Orb";
 import { cn } from "@utils/Styles";
-import IconWithContext from "@views/LoginPortal/SecondFactor/IconWithContext";
 
 export interface Props {
     passcode: string;
@@ -30,28 +28,37 @@ export enum State {
     RateLimited = 5,
 }
 
+const ringLength = 50.27;
+
+const remaining = (period: number) => period - (Math.floor(Date.now() / 1000) % period);
+
 const OTPDial = function (props: Props) {
     const { t: translate } = useTranslation();
     const fieldId = useId();
     const disabled =
         props.state === State.InProgress || props.state === State.Success || props.state === State.RateLimited;
 
+    const [left, setLeft] = useState(() => remaining(props.period));
+
+    useEffect(() => {
+        const timer = setInterval(() => setLeft(remaining(props.period)), 1000);
+
+        return () => clearInterval(timer);
+    }, [props.period]);
+
+    if (props.state === State.Success) {
+        return <Orb state="ok" />;
+    }
+
     return (
-        <IconWithContext icon={<Icon state={props.state} period={props.period} />}>
-            <span
-                id="otp-input"
-                className={cn(
-                    "mt-4 inline-block",
-                    "[&_input]:mx-1 [&_input]:box-border [&_input]:size-10 [&_input]:rounded-[5px] [&_input]:border [&_input]:border-black/30 [&_input]:text-center [&_input]:text-lg",
-                    "[&_input:disabled]:cursor-not-allowed [&_input:disabled]:opacity-50",
-                    props.state === State.Failure && "[&_input]:border-[rgba(255,2,2,0.95)]",
-                )}
-            >
+        <div className="l-form" style={{ alignSelf: "stretch" }}>
+            <span id="otp-input" className={cn("l-otp", props.state === State.Failure && "err")}>
                 <label htmlFor={fieldId} className="sr-only">
                     {translate("Enter One-Time Password")}
                 </label>
                 <OTPField.Root
                     id={fieldId}
+                    data-otp-root=""
                     length={props.digits}
                     value={props.passcode}
                     onValueChange={props.onChange}
@@ -69,25 +76,25 @@ const OTPDial = function (props: Props) {
                     ))}
                 </OTPField.Root>
             </span>
-        </IconWithContext>
+            <div className="l-timer">
+                <svg className="l-ring" viewBox="0 0 20 20" aria-hidden>
+                    <circle className="bgc" cx="10" cy="10" r="8" />
+                    <circle
+                        className="fg"
+                        cx="10"
+                        cy="10"
+                        r="8"
+                        strokeDasharray={ringLength}
+                        strokeDashoffset={ringLength * (1 - left / props.period)}
+                    />
+                </svg>
+                <span>
+                    {translate("Codes refresh every {{period}} seconds", { period: props.period })} ·{" "}
+                    <span className="mono">{left}s</span>
+                </span>
+            </div>
+        </div>
     );
 };
-
-interface IconProps {
-    readonly state: State;
-    readonly period: number;
-}
-
-function Icon(props: IconProps) {
-    return (
-        <Fragment>
-            {props.state === State.Success ? (
-                <SuccessIcon />
-            ) : (
-                <TimerIcon backgroundColor="#000" color="#FFFFFF" width={64} height={64} period={props.period} />
-            )}
-        </Fragment>
-    );
-}
 
 export default OTPDial;

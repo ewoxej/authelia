@@ -37,16 +37,18 @@ vi.mock("@services/PushNotification", () => ({
     initiateDuoDeviceSelectionProcess: vi.fn(),
 }));
 
-vi.mock("@components/FailureIcon", () => ({
-    default: () => <div data-testid="failure-icon" />,
-}));
-
-vi.mock("@components/PushNotificationIcon", () => ({
-    default: () => <div data-testid="push-notification-icon" />,
-}));
-
-vi.mock("@components/SuccessIcon", () => ({
-    default: () => <div data-testid="success-icon" />,
+vi.mock("@components/Orb", () => ({
+    default: (props: any) => (
+        <div
+            data-testid={
+                props.state === "ok"
+                    ? "success-icon"
+                    : props.state === "fail"
+                      ? "failure-icon"
+                      : "push-notification-icon"
+            }
+        />
+    ),
 }));
 
 vi.mock("@views/LoginPortal/SecondFactor/MethodContainer", () => ({

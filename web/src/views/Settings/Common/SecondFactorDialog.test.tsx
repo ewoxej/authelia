@@ -74,6 +74,8 @@ const info = {
 
 function renderDialog(
     props: Partial<{
+        confirm: boolean;
+        description: string;
         elevation: any;
         handleClosed: (ok: boolean, changed: boolean) => void;
         handleOpened: () => void;
@@ -187,6 +189,31 @@ describe("skipping", () => {
 
         expect(screen.getByTestId("password-form")).toBeInTheDocument();
         expect(screen.queryByText("One-Time Password")).not.toBeInTheDocument();
+    });
+});
+
+describe("confirming", () => {
+    it("asks for the second factor even when it could be skipped", () => {
+        const { handleClosed } = renderDialog({
+            confirm: true,
+            elevation: { ...elevation, can_skip_second_factor: false, skip_second_factor: true },
+        });
+
+        expect(handleClosed).not.toHaveBeenCalled();
+        expect(screen.getByText("One-Time Password")).toBeInTheDocument();
+    });
+
+    it("does not offer the email one-time code", () => {
+        renderDialog({ confirm: true, description: "Confirm to continue" });
+
+        expect(screen.queryByText("Email One-Time Code")).not.toBeInTheDocument();
+        expect(screen.getByText("Confirm to continue")).toBeInTheDocument();
+    });
+
+    it("goes straight to the only method", async () => {
+        renderDialog({ confirm: true, info: { has_duo: false, has_totp: true, has_webauthn: false } });
+
+        expect(await screen.findByTestId("method-otp")).toBeInTheDocument();
     });
 });
 

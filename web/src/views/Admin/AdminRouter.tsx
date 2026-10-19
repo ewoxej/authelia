@@ -4,10 +4,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { ShieldX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Route, Routes } from "react-router";
 
+import JanusLogo from "@components/JanusLogo";
 import {
     AdminActivitySubRoute,
     AdminBansSubRoute,
@@ -116,7 +116,7 @@ const AdminOverviewLoader = function (props: {
                     <CardHeader
                         title={
                             <div className="title-row">
-                                <ShieldX size={18} strokeWidth={1.75} style={{ color: "var(--a-alert-tx)" }} />
+                                <JanusLogo size={20} tone="denied" />
                                 <h2>{translate("Access Denied")}</h2>
                             </div>
                         }

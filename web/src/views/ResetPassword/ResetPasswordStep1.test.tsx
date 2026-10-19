@@ -35,7 +35,12 @@ vi.mock("@contexts/NotificationsContext", () => ({
 }));
 
 vi.mock("@layouts/MinimalLayout", () => ({
-    default: (props: any) => <div data-testid="layout">{props.children}</div>,
+    default: (props: any) => (
+        <div data-testid="layout">
+            {props.lead}
+            {props.children}
+        </div>
+    ),
 }));
 
 vi.mock("@services/ResetPassword", () => ({
@@ -55,15 +60,15 @@ afterEach(() => {
 it("renders the reset password form", () => {
     render(<ResetPasswordStep1 />);
     expect(screen.getByLabelText("Username")).toBeInTheDocument();
-    expect(screen.getByText("Reset")).toBeInTheDocument();
-    expect(screen.getByText("Cancel")).toBeInTheDocument();
+    expect(screen.getByText("Send reset link")).toBeInTheDocument();
+    expect(screen.getByText("Back to sign in")).toBeInTheDocument();
 });
 
 it("shows error when username is empty", async () => {
     render(<ResetPasswordStep1 />);
 
     await act(async () => {
-        fireEvent.click(screen.getByText("Reset"));
+        fireEvent.click(screen.getByText("Send reset link"));
     });
 
     expect(mockCreateError).toHaveBeenCalledWith("Username is required");
@@ -80,7 +85,7 @@ it("navigates to index on successful reset", async () => {
     });
 
     await act(async () => {
-        fireEvent.click(screen.getByText("Reset"));
+        fireEvent.click(screen.getByText("Send reset link"));
     });
 
     expect(mockCreateInfo).toHaveBeenCalled();
@@ -98,7 +103,7 @@ it("shows rate limited error", async () => {
     });
 
     await act(async () => {
-        fireEvent.click(screen.getByText("Reset"));
+        fireEvent.click(screen.getByText("Send reset link"));
     });
 
     expect(mockCreateError).toHaveBeenCalledWith("You have made too many requests");
@@ -106,7 +111,7 @@ it("shows rate limited error", async () => {
 
 it("navigates to index when cancel is clicked", () => {
     render(<ResetPasswordStep1 />);
-    fireEvent.click(screen.getByText("Cancel"));
+    fireEvent.click(screen.getByText("Back to sign in"));
     expect(mockNavigate).toHaveBeenCalledWith("/");
 });
 
@@ -121,7 +126,7 @@ it("shows error when service throws", async () => {
     });
 
     await act(async () => {
-        fireEvent.click(screen.getByText("Reset"));
+        fireEvent.click(screen.getByText("Send reset link"));
     });
 
     expect(mockCreateError).toHaveBeenCalledWith("There was an issue initiating the password reset process");
@@ -138,7 +143,7 @@ describe("rate limiting", () => {
         fireEvent.change(screen.getByLabelText("Username"), { target: { value: "john" } });
 
         await act(async () => {
-            fireEvent.click(screen.getByText("Reset"));
+            fireEvent.click(screen.getByText("Send reset link"));
         });
 
         expect(mockCreateError).toHaveBeenCalledWith("You have made too many requests");
@@ -203,7 +208,7 @@ describe("rate limiting", () => {
         fireEvent.change(screen.getByLabelText("Username"), { target: { value: "john" } });
 
         await act(async () => {
-            fireEvent.click(screen.getByText("Reset"));
+            fireEvent.click(screen.getByText("Send reset link"));
         });
 
         expect(document.getElementById("reset-button")).toBeDisabled();
@@ -250,7 +255,7 @@ describe("responses", () => {
         render(<ResetPasswordStep1 />);
 
         fireEvent.change(screen.getByLabelText("Username"), { target: { value: "john" } });
-        fireEvent.click(screen.getByText("Reset"));
+        fireEvent.click(screen.getByText("Send reset link"));
 
         await waitFor(() =>
             expect(mockCreateError).toHaveBeenCalledWith("There was an issue initiating the password reset process"),
@@ -265,7 +270,7 @@ describe("responses", () => {
         render(<ResetPasswordStep1 />);
 
         fireEvent.change(screen.getByLabelText("Username"), { target: { value: "john" } });
-        fireEvent.click(screen.getByText("Reset"));
+        fireEvent.click(screen.getByText("Send reset link"));
 
         await waitFor(() => expect(screen.getByLabelText("Username")).toBeDisabled());
         expect(document.getElementById("cancel-button")).toBeDisabled();

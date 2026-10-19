@@ -18,7 +18,6 @@ import (
 	"github.com/authelia/authelia/v4/internal/authentication"
 	"github.com/authelia/authelia/v4/internal/middlewares"
 	"github.com/authelia/authelia/v4/internal/storage"
-	"github.com/authelia/authelia/v4/internal/utils"
 )
 
 // adminRequestRestart is a variable so it can be replaced in tests.
@@ -32,7 +31,7 @@ const (
 // AdminOverviewGET returns general information used by the administration UI.
 func AdminOverviewGET(ctx *middlewares.AutheliaCtx) {
 	body := adminOverviewBody{
-		Version:          utils.Version(),
+		Version:          authelia.UpstreamVersion,
 		ForkVersion:      authelia.ForkVersion(),
 		AdminGroup:       ctx.Configuration.Administration.AdminGroup,
 		RestartEnabled:   !ctx.Configuration.Administration.DisableRestart,
@@ -48,6 +47,7 @@ func AdminOverviewGET(ctx *middlewares.AutheliaCtx) {
 	}
 
 	body.Host = adminHost(&ctx.Configuration)
+	body.Theme = ctx.Configuration.Theme
 	body.Components = newAdminComponents(&ctx.Configuration)
 	body.Regulation = adminRegulationBody{
 		Modes:      ctx.Configuration.Regulation.Modes,
@@ -68,6 +68,22 @@ func AdminOverviewGET(ctx *middlewares.AutheliaCtx) {
 		} else {
 			ctx.Logger.WithError(err).Error("Error occurred listing the configuration files")
 		}
+	}
+
+	adminReplyJSON(ctx, body)
+}
+
+// AdminSessionGET returns whether the second factor of the administrator is confirmed and until when.
+func AdminSessionGET(ctx *middlewares.AutheliaCtx) {
+	body := adminSessionBody{}
+
+	if userSession, err := ctx.GetSession(); err == nil && !userSession.IsAnonymous() {
+		expires := middlewares.AdminConfirmationExpires(ctx, &userSession)
+
+		body.Confirmed = ctx.GetClock().Now().Before(expires)
+		body.Expires = expires.Unix()
+		// A passkey sign in has no knowledge factor, the password is used to confirm instead.
+		body.FactorKnowledge = userSession.AuthenticationMethodRefs.FactorKnowledge()
 	}
 
 	adminReplyJSON(ctx, body)

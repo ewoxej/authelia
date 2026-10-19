@@ -6,6 +6,7 @@ package middlewares
 
 import (
 	"slices"
+	"time"
 
 	"github.com/valyala/fasthttp"
 
@@ -61,5 +62,43 @@ func RequireAdmin(next RequestHandler) RequestHandler {
 		}
 
 		next(ctx)
+	}
+}
+
+// AdminConfirmationExpires returns when the second factor confirmation of the user session stops granting access to the
+// administration API. The confirmation is the most recent second factor authentication and lasts for the elevation
+// lifespan.
+func AdminConfirmationExpires(ctx *AutheliaCtx, userSession *session.UserSession) time.Time {
+	if userSession.SecondFactorAuthnTimestamp == 0 {
+		return time.Unix(0, 0).UTC()
+	}
+
+	return userSession.GetSecondFactorAuthn().Add(ctx.Configuration.IdentityValidation.ElevatedSession.ElevationLifespan)
+}
+
+// RequireAdminConfirmed requires the user to have confirmed their second factor recently. It's used after RequireAdmin
+// in place of the one-time code elevation.
+func RequireAdminConfirmed(next RequestHandler) RequestHandler {
+	return func(ctx *AutheliaCtx) {
+		userSession, err := ctx.GetSession()
+		if err != nil {
+			ctx.Logger.WithError(err).Error("Error occurred retrieving the user session during an administrator confirmation check")
+
+			ctx.ReplyForbidden()
+
+			return
+		}
+
+		if ctx.GetClock().Now().Before(AdminConfirmationExpires(ctx, &userSession)) {
+			next(ctx)
+
+			return
+		}
+
+		ctx.Logger.WithFields(map[string]any{"username": userSession.Username}).Debug("Access to the administration API requires the second factor to be confirmed")
+
+		if err = ctx.ReplyJSON(OKResponse{Status: "KO", Data: ElevatedForbiddenResponse{SecondFactor: true}}, fasthttp.StatusForbidden); err != nil {
+			ctx.Logger.WithError(err).Error("Error occurred encoding JSON response during an administrator confirmation check")
+		}
 	}
 }
