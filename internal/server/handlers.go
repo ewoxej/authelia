@@ -22,7 +22,6 @@ import (
 	"github.com/valyala/fasthttp/fasthttpadaptor"
 	"github.com/valyala/fasthttp/pprofhandler"
 
-	"github.com/authelia/authelia/v4/internal/admin"
 	"github.com/authelia/authelia/v4/internal/configuration/schema"
 	"github.com/authelia/authelia/v4/internal/duo"
 	"github.com/authelia/authelia/v4/internal/handlers"
@@ -242,17 +241,8 @@ func handlerMain(config *schema.Configuration, providers middlewares.Providers) 
 		adminSessionBuilder := middlewares.NewBridgeBuilder(*config, providers).
 			WithPreMiddlewares(middlewares.SecurityHeadersBase, middlewares.SecurityHeadersNoStore, middlewares.SecurityHeadersCSPNone)
 
-		switch devNoAuth, err := admin.DevNoAuth(config); {
-		case err != nil:
-			logging.Logger().WithError(err).Error("Administration API authentication can't be disabled")
-			adminBuilder = adminBuilder.WithPostMiddlewares(middlewares.RequireAdmin, middlewares.RequireAdminConfirmed)
-			adminSessionBuilder = adminSessionBuilder.WithPostMiddlewares(middlewares.RequireAdmin)
-		case devNoAuth:
-			logging.Logger().Warn("===> The administration API authentication is DISABLED for development. Never use this outside of a development environment. <===")
-		default:
-			adminBuilder = adminBuilder.WithPostMiddlewares(middlewares.RequireAdmin, middlewares.RequireAdminConfirmed)
-			adminSessionBuilder = adminSessionBuilder.WithPostMiddlewares(middlewares.RequireAdmin)
-		}
+		adminBuilder = adminBuilder.WithPostMiddlewares(middlewares.RequireAdminSameOrigin, middlewares.RequireAdmin, middlewares.RequireAdminConfirmed)
+		adminSessionBuilder = adminSessionBuilder.WithPostMiddlewares(middlewares.RequireAdminSameOrigin, middlewares.RequireAdmin)
 
 		middlewareAdmin := adminBuilder.Build()
 

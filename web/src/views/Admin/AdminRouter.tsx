@@ -25,7 +25,6 @@ import AdminLayout from "@views/Admin/AdminLayout";
 import BansView from "@views/Admin/Bans/BansView";
 import { AdminContext, AdminContextValue } from "@views/Admin/Common/AdminContext";
 import AdminElevationGate from "@views/Admin/Common/AdminElevationGate";
-import { adminDevNoAuth } from "@views/Admin/Common/DevMode";
 import { Btn, Card, CardHeader, Spinner } from "@views/Admin/Common/ui";
 import ConfigurationView from "@views/Admin/Configuration/ConfigurationView";
 import OverviewView from "@views/Admin/Overview/OverviewView";
@@ -38,16 +37,10 @@ const AdminRouter = function () {
     const [overview, setOverview] = useState<AdminOverview>();
 
     useEffect(() => {
-        if (!adminDevNoAuth) {
-            fetchState();
-        }
+        fetchState();
     }, [fetchState]);
 
     useEffect(() => {
-        if (adminDevNoAuth) {
-            return;
-        }
-
         if (fetchStateError || (state && state.authentication_level < AuthenticationLevel.OneFactor)) {
             navigate(IndexRoute);
         }

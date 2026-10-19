@@ -1165,9 +1165,10 @@ export const sections: SectionDef[] = [
             },
             {
                 description:
-                    "The directories the file picker can browse. Empty uses the directories of the configuration files.",
+                    "The directories the file picker can browse and new secrets can be read from. Empty uses the directories of the configuration files. It can only be changed in the file on the server.",
                 kind: "list",
                 label: "File picker directories",
+                locked: true,
                 path: "administration.file_roots",
                 placeholder: "/config",
                 wide: true,

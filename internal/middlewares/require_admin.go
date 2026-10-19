@@ -5,6 +5,8 @@
 package middlewares
 
 import (
+	"bytes"
+	"mime"
 	"slices"
 	"time"
 
@@ -101,4 +103,63 @@ func RequireAdminConfirmed(next RequestHandler) RequestHandler {
 			ctx.Logger.WithError(err).Error("Error occurred encoding JSON response during an administrator confirmation check")
 		}
 	}
+}
+
+// RequireAdminSameOrigin protects the administration API against cross-site request forgery. The session cookie is also
+// sent by pages on other subdomains of the cookie domain since they're the same site, so requests which change something
+// have to come from the same origin as the portal, and requests with a body have to be JSON, which a page on another
+// origin can't send without a CORS preflight that the administration API never allows.
+func RequireAdminSameOrigin(next RequestHandler) RequestHandler {
+	return func(ctx *AutheliaCtx) {
+		if ctx.IsGet() || ctx.IsHead() || ctx.IsOptions() {
+			next(ctx)
+
+			return
+		}
+
+		if !isAdminSameOrigin(ctx) {
+			ctx.Logger.WithFields(map[string]any{"method": string(ctx.Method()), "origin": string(ctx.Request.Header.PeekBytes(headerOrigin)), "site": string(ctx.Request.Header.PeekBytes(headerSecFetchSite))}).Warn("Request to the administration API was rejected as it didn't come from the same origin")
+
+			ctx.SetStatusCode(fasthttp.StatusForbidden)
+			ctx.SetJSONError("Requests to the administration API have to come from the same origin.")
+
+			return
+		}
+
+		if (ctx.IsPost() || ctx.IsPut() || ctx.IsPatch()) && !isContentTypeJSON(ctx.Request.Header.ContentType()) {
+			ctx.SetStatusCode(fasthttp.StatusUnsupportedMediaType)
+			ctx.SetJSONError("Requests to the administration API have to be JSON.")
+
+			return
+		}
+
+		next(ctx)
+	}
+}
+
+// isAdminSameOrigin uses the Sec-Fetch-Site header when the browser sends it, and otherwise compares the Origin header
+// with the origin of the request. Requests without either header don't come from a browser, which always sends one of
+// them with these methods, so they can't be forged by another page.
+func isAdminSameOrigin(ctx *AutheliaCtx) bool {
+	if site := ctx.Request.Header.PeekBytes(headerSecFetchSite); len(site) != 0 {
+		return bytes.Equal(site, secFetchSiteSameOrigin)
+	}
+
+	origin := ctx.Request.Header.PeekBytes(headerOrigin)
+	if len(origin) == 0 {
+		return true
+	}
+
+	expected := make([]byte, 0, len(origin))
+	expected = append(expected, ctx.XForwardedProto()...)
+	expected = append(expected, "://"...)
+	expected = append(expected, ctx.GetXForwardedHost()...)
+
+	return bytes.EqualFold(origin, expected)
+}
+
+func isContentTypeJSON(value []byte) bool {
+	mediaType, _, err := mime.ParseMediaType(string(value))
+
+	return err == nil && mediaType == "application/json"
 }

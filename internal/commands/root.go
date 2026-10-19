@@ -109,7 +109,7 @@ func (ctx *CmdCtx) RootRunE(_ *cobra.Command, _ []string) (err error) {
 		}
 	}
 
-	ctx.providers.AdminConfiguration = admin.NewConfigurationManager(ctx.cconfig.files, ctx.cconfig.bfilters, ctx.trusted)
+	ctx.providers.AdminConfiguration = admin.NewConfigurationManager(ctx.cconfig.files, ctx.cconfig.bfilters, ctx.trusted).WithFileRoots(ctx.config.Administration.FileRoots)
 
 	ctx.cconfig = nil
 

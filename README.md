@@ -94,6 +94,16 @@ administration:
 Administrators must have a second factor configured. The configuration files have to be writable by the process for
 the configuration forms to save.
 
+## Running in Docker
+
+The image runs Janus as the user `1000:1000`, not as root. On start it changes the owner of `/config` to that user so the
+administration area can save the configuration and the users file. Set `PUID` and `PGID` to use another user, or start
+the container with `--user`, in which case nothing is changed and the mounted files have to be readable and writable by
+that user already.
+
+Files outside `/config`, such as secrets mounted elsewhere or the directories in `file_roots`, have to be readable by the
+user, and writable where the administration area creates folders or secret files.
+
 ## Development
 
 [dev/admin](dev/admin/README.md) has a development environment with hot reload: it builds the backend, seeds test

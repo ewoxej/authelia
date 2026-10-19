@@ -56,8 +56,8 @@ WORKDIR /app
 
 ENV \
 	PATH="/app:${PATH}" \
-	PUID=0 \
-	PGID=0 \
+	PUID=1000 \
+	PGID=1000 \
 	X_AUTHELIA_CONFIG="/config/configuration.yml"
 
 COPY --link --from=builder-backend /go/src/app/authelia /go/src/app/LICENSE /go/src/app/entrypoint.sh /go/src/app/healthcheck.sh ./

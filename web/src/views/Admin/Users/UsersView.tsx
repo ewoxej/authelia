@@ -12,6 +12,7 @@ import { useNotifications } from "@contexts/NotificationsContext";
 import { useRouterNavigate } from "@hooks/RouterNavigate";
 import { AdminUserListItem, getAdminUsers } from "@services/Admin";
 import { useAdmin, useAdminErrorHandler } from "@views/Admin/Common/AdminContext";
+import { downloadCSV } from "@views/Admin/Common/CSV";
 import { formatRelative, formatShort } from "@views/Admin/Common/Format";
 import { Avatar, Badge, Btn, Card, IconBtn, Note, PageHeader, SearchBox, Seg, Spinner } from "@views/Admin/Common/ui";
 import UserEditDialog from "@views/Admin/Users/UserEditDialog";
@@ -120,15 +121,8 @@ const UsersView = function () {
                 u.last_sign_in ?? "",
             ]),
         ];
-        const csv = rows.map((row) => row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(",")).join("\n");
-        const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-        const link = document.createElement("a");
 
-        link.href = url;
-        link.download = "authelia-users.csv";
-        link.click();
-
-        URL.revokeObjectURL(url);
+        downloadCSV("authelia-users.csv", rows);
     };
 
     const handleLookup = (e: FormEvent) => {

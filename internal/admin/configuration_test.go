@@ -13,8 +13,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/authelia/authelia/v4/internal/configuration/schema"
 )
 
 const testConfiguration = `---
@@ -269,29 +267,4 @@ func TestRestartRequested(t *testing.T) {
 
 func sprintf(format string, args ...any) string {
 	return fmt.Sprintf(format, args...)
-}
-
-func TestDevNoAuth(t *testing.T) {
-	loopback := &schema.Configuration{Server: schema.Server{Address: &schema.AddressTCP{Address: schema.NewAddressFromNetworkValues("tcp", "127.0.0.1", 9091)}}}
-	public := &schema.Configuration{Server: schema.Server{Address: &schema.AddressTCP{Address: schema.NewAddressFromNetworkValues("tcp", "0.0.0.0", 9091)}}}
-
-	enabled, err := devNoAuth(true, "", loopback)
-	assert.False(t, enabled)
-	assert.NoError(t, err)
-
-	enabled, err = devNoAuth(false, "true", loopback)
-	assert.False(t, enabled, "release builds never disable authentication")
-	assert.Error(t, err)
-
-	enabled, err = devNoAuth(true, "true", public)
-	assert.False(t, enabled, "only loopback listeners can disable authentication")
-	assert.Error(t, err)
-
-	enabled, err = devNoAuth(true, "true", loopback)
-	assert.True(t, enabled)
-	assert.NoError(t, err)
-
-	enabled, err = DevNoAuth(loopback)
-	assert.False(t, enabled, "tests aren't run with the dev build tag")
-	assert.NoError(t, err)
 }

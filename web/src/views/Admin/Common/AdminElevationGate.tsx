@@ -11,7 +11,6 @@ import { useNotifications } from "@contexts/NotificationsContext";
 import { useUserInfoGET } from "@hooks/UserInfo";
 import { AdminSession, getAdminSession } from "@services/Admin";
 import { UserSessionElevation } from "@services/UserSessionElevation";
-import { adminDevNoAuth } from "@views/Admin/Common/DevMode";
 import { Card as AdminCard, CardHeader as AdminCardHeader, Spinner as AdminSpinner, Btn } from "@views/Admin/Common/ui";
 import SecondFactorDialog from "@views/Settings/Common/SecondFactorDialog";
 import "@layouts/login.css";
@@ -52,16 +51,10 @@ const AdminElevationGate = function (props: Props) {
     }, []);
 
     useEffect(() => {
-        if (!adminDevNoAuth) {
-            fetchUserInfo();
-        }
+        fetchUserInfo();
     }, [fetchUserInfo]);
 
     useEffect(() => {
-        if (adminDevNoAuth) {
-            return;
-        }
-
         const generation = props.generation;
 
         getAdminSession()
@@ -109,7 +102,7 @@ const AdminElevationGate = function (props: Props) {
         state = "confirmed";
     }
 
-    const locked = state !== "confirmed" && !adminDevNoAuth;
+    const locked = state !== "confirmed";
 
     // The second factor dialog is shared with the user settings, it uses their design while the gate is locked.
     useEffect(() => {

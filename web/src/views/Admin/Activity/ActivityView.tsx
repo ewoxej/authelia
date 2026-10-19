@@ -20,6 +20,7 @@ import {
 } from "@services/Admin";
 import { useAdmin, useAdminErrorHandler } from "@views/Admin/Common/AdminContext";
 import ConfirmDialog from "@views/Admin/Common/ConfirmDialog";
+import { downloadCSV } from "@views/Admin/Common/CSV";
 import { formatDateTime, formatNumber, formatShort, formatTime } from "@views/Admin/Common/Format";
 import {
     Badge,
@@ -141,18 +142,6 @@ function useDebounced<T>(value: T, delay = 300): T {
     }, [value, delay]);
 
     return debounced;
-}
-
-function downloadCSV(name: string, rows: string[][]) {
-    const csv = rows.map((row) => row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(",")).join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = name;
-    link.click();
-
-    URL.revokeObjectURL(url);
 }
 
 const ActivityView = function () {

@@ -86,6 +86,13 @@ type TemplateBytesFilter struct {
 	t    *template.Template
 	log  *logrus.Entry
 	data TemplateBytesFilterValues
+
+	left, right string
+}
+
+// Delimiters returns the delimiters of the template actions.
+func (f *TemplateBytesFilter) Delimiters() (left, right string) {
+	return f.left, f.right
 }
 
 // Name returns the name of this filter.
@@ -380,9 +387,21 @@ func NewTemplateFileFilter(values map[string]any, left, right string) BytesFilte
 		"Number": utils.BuildNumber,
 	}
 
-	return &TemplateBytesFilter{
-		log:  logging.Logger().WithFields(map[string]any{filterField: filterTemplate}),
-		t:    template.New("config.template").Delims(left, right).Option("missingkey=error").Funcs(templates.FuncMap()),
-		data: data,
+	filter := &TemplateBytesFilter{
+		log:   logging.Logger().WithFields(map[string]any{filterField: filterTemplate}),
+		t:     template.New("config.template").Delims(left, right).Option("missingkey=error").Funcs(templates.FuncMap()),
+		data:  data,
+		left:  left,
+		right: right,
 	}
+
+	if filter.left == "" {
+		filter.left = "{{"
+	}
+
+	if filter.right == "" {
+		filter.right = "}}"
+	}
+
+	return filter
 }

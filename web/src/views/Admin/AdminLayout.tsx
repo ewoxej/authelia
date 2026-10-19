@@ -21,7 +21,6 @@ import {
 } from "@constants/Routes";
 import { useRouterNavigate } from "@hooks/RouterNavigate";
 import { AdminOverview } from "@services/Admin";
-import { adminDevNoAuth } from "@views/Admin/Common/DevMode";
 import { Avatar, Key, useAdminTheme } from "@views/Admin/Common/ui";
 import { sections, wholeFileSection } from "@views/Admin/Configuration/Sections";
 
@@ -80,11 +79,11 @@ const AdminLayout = function (props: { overview?: AdminOverview; children: React
     const user = props.overview?.display_name || props.overview?.username || "";
 
     return (
-        <div className={adminDevNoAuth ? "adm app has-devbar" : "adm app"}>
+        <div className="adm app">
             <header className="topbar">
                 <button type="button" className="brand" onClick={() => navigate(AdminRoute)}>
                     <span className="brand-mark">
-                        <JanusLogo size={32} tone={adminDevNoAuth ? "dev" : "accent"} />
+                        <JanusLogo size={32} tone="accent" />
                     </span>
                     <JanusWordmark className="brand-name" />
                     <Key>admin</Key>
@@ -97,14 +96,6 @@ const AdminLayout = function (props: { overview?: AdminOverview; children: React
                 ) : null}
                 {user ? <Avatar name={user} me size={32} /> : null}
             </header>
-
-            {adminDevNoAuth ? (
-                <div className="devbar" role="status">
-                    <span className="dot" style={{ background: "var(--a-alert)" }} />
-                    <b>{translate("Development mode")}</b>
-                    <span>{translate("Authentication is disabled. Do not expose this instance.")}</span>
-                </div>
-            ) : null}
 
             <div className="body">
                 <nav className="side" aria-label={translate("Administration")}>

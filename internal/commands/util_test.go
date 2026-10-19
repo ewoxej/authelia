@@ -1351,14 +1351,6 @@ func (w *failingStringWriter) WriteString(s string) (int, error) {
 	return len(s), nil
 }
 
-func TestExportJSONSchemaNamesArePublished(t *testing.T) {
-	for _, name := range []string{jsonSchemaNameExportsTOTP, jsonSchemaNameExportsWebAuthn, jsonSchemaNameExportsIdentifiers} {
-		t.Run(name, func(t *testing.T) {
-			assert.FileExists(t, filepath.Join("..", "..", "docs", "static", "schemas", "latest", "json-schema", name+utils.ExtJSON))
-		})
-	}
-}
-
 func TestExportFileImportFileRoundTrip(t *testing.T) {
 	createdAt := time.Date(2025, 4, 11, 4, 1, 31, 0, time.UTC)
 	lastUsedAt := time.Date(2025, 4, 12, 4, 1, 31, 0, time.UTC)

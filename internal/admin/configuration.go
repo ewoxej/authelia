@@ -59,6 +59,9 @@ type ConfigurationManager struct {
 	filters []configuration.BytesFilter
 	trusted *x509.CertPool
 
+	// fileRoots are the directories the file picker can browse in the running configuration.
+	fileRoots []string
+
 	mutex sync.Mutex
 }
 
@@ -69,6 +72,14 @@ func NewConfigurationManager(paths []string, filters []configuration.BytesFilter
 		filters: filters,
 		trusted: trusted,
 	}
+}
+
+// WithFileRoots sets the directories the file picker can browse in the running configuration. The configuration can't
+// be saved with different ones, and new secret expressions can only read files in them.
+func (m *ConfigurationManager) WithFileRoots(roots []string) *ConfigurationManager {
+	m.fileRoots = roots
+
+	return m
 }
 
 // FilterNames returns the names of the filters applied to the configuration files.
@@ -124,6 +135,11 @@ func (m *ConfigurationManager) Validate(path string, content []byte) (result *Co
 	if path, err = m.resolve(path); err != nil {
 		return nil, err
 	}
+
+	// The template filter isn't safe to use concurrently.
+	m.mutex.Lock()
+
+	defer m.mutex.Unlock()
 
 	return m.validate(path, content)
 }
@@ -515,6 +531,33 @@ func (m *ConfigurationManager) validate(path string, content []byte) (result *Co
 		return result, nil
 	}
 
+	if result.Errors, err = m.policyErrors(content); err != nil {
+		return nil, err
+	} else if len(result.Errors) != 0 {
+		return result, nil
+	}
+
+	result.Errors = []string{}
+
+	var contents [][]byte
+
+	// The messages may contain what the template expressions and environment variables evaluate to.
+	defer func() {
+		if result == nil || len(result.Errors)+len(result.Warnings) == 0 {
+			return
+		}
+
+		values := m.sensitiveValues(contents...)
+
+		for i, e := range result.Errors {
+			result.Errors[i] = redact(e, values)
+		}
+
+		for i, w := range result.Warnings {
+			result.Warnings[i] = redact(w, values)
+		}
+	}()
+
 	var dir string
 
 	if dir, err = os.MkdirTemp("", "authelia-admin-config-"); err != nil {
@@ -530,10 +573,15 @@ func (m *ConfigurationManager) validate(path string, content []byte) (result *Co
 	}
 
 	files := make([]string, len(paths))
+	contents = append(contents, content)
 
 	for i, p := range paths {
 		if p != path {
 			files[i] = p
+
+			if other, err := os.ReadFile(p); err == nil {
+				contents = append(contents, other)
+			}
 
 			continue
 		}
@@ -568,6 +616,10 @@ func (m *ConfigurationManager) validate(path string, content []byte) (result *Co
 	}
 
 	validator.ValidateKeys(keys, configuration.GetMultiKeyMappedDeprecationKeys(), configuration.DefaultEnvPrefix, val)
+
+	if e := m.fileRootsError(config.Administration.FileRoots); e != "" {
+		result.Errors = append(result.Errors, e)
+	}
 
 	tc := &tls.Config{
 		RootCAs:    m.trusted,

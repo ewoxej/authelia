@@ -37,6 +37,8 @@ interface BaseField {
     description?: string;
     placeholder?: string;
     wide?: boolean;
+    // The value is shown but can't be changed from the administration area.
+    locked?: boolean;
 }
 
 /** A boolean in the configuration which switches a group on or off. With invert the group is on while it's false or unset. */
@@ -707,7 +709,7 @@ export const FieldRenderer = function (props: RenderProps & { field: FieldDef })
     const id = useId();
     const { overview } = useAdmin();
     const [browsing, setBrowsing] = useState(false);
-    const { disabled, field, initial, onChange, value } = props;
+    const { field, initial, onChange, value } = props;
 
     if (field.kind === "group") {
         return <SubGroup {...props} field={field} />;
@@ -729,6 +731,7 @@ export const FieldRenderer = function (props: RenderProps & { field: FieldDef })
         );
     }
 
+    const disabled = props.disabled || field.locked;
     const current = getPath(value, field.path);
     const changed = !same(current, getPath(initial, field.path));
     const set = (v: unknown) => onChange(setPath(value, field.path, v));

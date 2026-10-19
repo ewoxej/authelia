@@ -233,36 +233,6 @@ html[data-admin-theme] body {
     font-size: 16px;
 }
 
-.adm .devbar {
-    position: sticky;
-    top: 71px;
-    z-index: 19;
-    flex: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    height: 34px;
-    padding: 0 16px;
-    background: var(--a-alert-tint);
-    color: var(--a-alert-tx);
-    font-size: 12.5px;
-    box-shadow: inset 0 -1px 0 rgba(224, 90, 90, 0.25);
-}
-
-.adm .devbar b {
-    font-family: var(--a-font-mono);
-    font-size: 10.5px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.adm.has-devbar {
-    --a-head: 105px;
-}
-
 .adm .body {
     flex: 1;
     display: flex;

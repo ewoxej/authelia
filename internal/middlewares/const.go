@@ -48,6 +48,7 @@ var (
 	headerCacheControl          = []byte(fasthttp.HeaderCacheControl)
 	headerContentSecurityPolicy = []byte(fasthttp.HeaderContentSecurityPolicy)
 	headerContentType           = []byte(fasthttp.HeaderContentType)
+	headerSecFetchSite          = []byte("Sec-Fetch-Site")
 
 	headerPermissionsPolicy         = []byte("Permissions-Policy")
 	headerCrossOriginOpenerPolicy   = []byte("Cross-Origin-Opener-Policy")
@@ -144,6 +145,8 @@ const (
 var (
 	protoHTTPS = []byte(strProtoHTTPS)
 	protoHTTP  = []byte(strProtoHTTP)
+
+	secFetchSiteSameOrigin = []byte("same-origin")
 
 	qryArgRedirect    = []byte(queryArgRedirect)
 	qryArgAutheliaURL = []byte(queryArgAutheliaURL)

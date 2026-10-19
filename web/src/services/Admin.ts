@@ -206,7 +206,8 @@ async function request<T>(method: "DELETE" | "GET" | "POST" | "PUT", path: strin
 
     try {
         res = await axios.request<AdminResponse<T>>({
-            data,
+            // The administration API only accepts JSON for POST and PUT, so requests without a body send an empty object.
+            data: data === undefined && (method === "POST" || method === "PUT") ? {} : data,
             method,
             url: AdminPath + path,
             validateStatus: () => true,

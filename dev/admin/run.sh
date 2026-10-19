@@ -4,19 +4,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-# Runs a development build of the backend with the administration API authentication disabled and the Vite
-# development server for the administration UI. Open http://127.0.0.1:3010/admin when both are started.
-#
-# With --auth the administration area requires signing in like a real deployment: the admins group, a second factor
-# and elevation.
+# Runs a development build of the backend and the Vite development server for the web UI. Open
+# http://127.0.0.1:3010/admin when both are started and sign in with one of the seeded administrators.
 
 set -euo pipefail
-
-NO_AUTH="true"
-
-if [ "${1:-}" = "--auth" ]; then
-	NO_AUTH="false"
-fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DIR="${ROOT}/dev/admin"
@@ -46,9 +37,6 @@ export DOMAIN="example.com"
 export NEXTCLOUD_URL="cloud.example.com"
 export IMMICH_URL="photos.example.com"
 export X_AUTHELIA_CONFIG_FILTERS="template"
-export X_AUTHELIA_ADMIN_DEV_NO_AUTH="${NO_AUTH}"
-# Vite gives variables from the environment priority over web/.env.admin-dev.
-export VITE_ADMIN_DEV_NO_AUTH="${NO_AUTH}"
 
 PNPM=(pnpm)
 if ! command -v pnpm > /dev/null; then
