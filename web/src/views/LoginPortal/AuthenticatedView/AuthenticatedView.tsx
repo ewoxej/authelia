@@ -22,12 +22,10 @@ const AuthenticatedView = function (props: Props) {
             title={`${translate("Hi")} ${props.userInfo.display_name}`}
             userInfo={props.userInfo}
         >
-            <div className="flex flex-col items-center justify-center">
-                <div className="w-full">
+            <div className="l-form">
+                <Authenticated />
+                <div className="l-row">
                     <LogoutButton />
-                </div>
-                <div className="my-4 w-full rounded-[10px] border border-border p-8">
-                    <Authenticated />
                 </div>
             </div>
         </MinimalLayout>

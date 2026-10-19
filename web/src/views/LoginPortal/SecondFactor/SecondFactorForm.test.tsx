@@ -64,6 +64,7 @@ vi.mock("@services/UserInfo", () => ({
 vi.mock("@layouts/LoginLayout", () => ({
     default: (props: any) => (
         <div data-testid="login-layout" data-title={props.title}>
+            {props.lead}
             {props.children}
         </div>
     ),
@@ -75,20 +76,6 @@ vi.mock("@components/LogoutButton", () => ({
 
 vi.mock("@components/SwitchUserButton", () => ({
     default: () => <button data-testid="switch-user-button">Switch User</button>,
-}));
-
-vi.mock("@views/LoginPortal/SecondFactor/MethodSelectionDialog", () => ({
-    default: (props: any) => (
-        <div
-            data-testid="method-selection-dialog"
-            data-open={String(props.open)}
-            data-webauthn={String(props.webauthn)}
-            data-methods={[...props.methods].join(",")}
-        >
-            <button data-testid="select-totp" onClick={() => props.onClick(1)} />
-            <button data-testid="dialog-close" onClick={() => props.onClose()} />
-        </div>
-    ),
 }));
 
 vi.mock("@views/LoginPortal/SecondFactor/OneTimePasswordMethod", () => ({
@@ -179,35 +166,37 @@ afterEach(() => {
 });
 
 describe("rendering", () => {
-    it("renders login layout with user greeting", async () => {
+    it("renders login layout with the signed in user", async () => {
         renderForm();
-        expect(await screen.findByTestId("login-layout")).toHaveAttribute("data-title", "Hi John");
+        expect(await screen.findByTestId("login-layout")).toHaveAttribute("data-title", "Confirm it's you");
+        expect(screen.getByText("John")).toBeInTheDocument();
         expect(screen.getByTestId("logout-button")).toBeInTheDocument();
     });
 
-    it("renders methods button when multiple methods available", () => {
+    it("renders a tab per method when multiple methods are available", () => {
         renderForm();
-        expect(screen.getByText("Methods")).toBeInTheDocument();
-        expect(screen.getByTestId("method-selection-dialog")).toBeInTheDocument();
+        expect(screen.getByRole("tablist")).toBeInTheDocument();
+        expect(screen.getByRole("tab", { name: "Code" })).toHaveAttribute("aria-selected", "true");
+        expect(screen.getByRole("tab", { name: "Security Key" })).toHaveAttribute("aria-selected", "false");
     });
 
-    it("does not render methods button when only one method available", () => {
+    it("does not render tabs when only one method available", () => {
         renderForm({ configuration: { available_methods: new Set([SecondFactorMethod.TOTP]) } });
-        expect(screen.queryByText("Methods")).not.toBeInTheDocument();
-        expect(screen.queryByTestId("method-selection-dialog")).not.toBeInTheDocument();
+        expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
     });
 
-    it("does not render methods button without the knowledge factor", () => {
+    it("does not render tabs without the knowledge factor", () => {
         renderForm({ factorKnowledge: false });
-        expect(screen.queryByText("Methods")).not.toBeInTheDocument();
+        expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
     });
 
-    it("renders the switch user button when a flow is present", () => {
+    it("offers to switch the user instead of signing out when a flow is present", () => {
         mocks.flowPresent = true;
 
         renderForm();
 
         expect(screen.getByTestId("switch-user-button")).toBeInTheDocument();
+        expect(screen.queryByTestId("logout-button")).not.toBeInTheDocument();
     });
 
     it("hides the switch user button without a flow", () => {
@@ -215,12 +204,12 @@ describe("rendering", () => {
         expect(screen.queryByTestId("switch-user-button")).not.toBeInTheDocument();
     });
 
-    it("tells the dialog whether the browser supports WebAuthn", () => {
+    it("leaves out the security key when the browser doesn't support WebAuthn", () => {
         mocks.supportsWebAuthn = false;
 
         renderForm();
 
-        expect(screen.getByTestId("method-selection-dialog")).toHaveAttribute("data-webauthn", "false");
+        expect(screen.queryByRole("tab", { name: "Security Key" })).not.toBeInTheDocument();
     });
 });
 
@@ -321,33 +310,12 @@ describe("method callbacks", () => {
 });
 
 describe("method selection", () => {
-    it("opens the dialog from the methods button", async () => {
-        renderForm();
-
-        fireEvent.click(screen.getByText("Methods"));
-
-        await waitFor(() => expect(screen.getByTestId("method-selection-dialog")).toHaveAttribute("data-open", "true"));
-    });
-
-    it("closes the dialog", async () => {
-        renderForm();
-
-        fireEvent.click(screen.getByText("Methods"));
-        await waitFor(() => expect(screen.getByTestId("method-selection-dialog")).toHaveAttribute("data-open", "true"));
-
-        fireEvent.click(screen.getByTestId("dialog-close"));
-
-        await waitFor(() =>
-            expect(screen.getByTestId("method-selection-dialog")).toHaveAttribute("data-open", "false"),
-        );
-    });
-
     it("persists the method on the server when local storage is unavailable", async () => {
         const { props } = renderForm();
 
-        fireEvent.click(screen.getByTestId("select-totp"));
+        fireEvent.click(screen.getByRole("tab", { name: "Security Key" }));
 
-        await waitFor(() => expect(setPreferredMock).toHaveBeenCalledWith(SecondFactorMethod.TOTP));
+        await waitFor(() => expect(setPreferredMock).toHaveBeenCalledWith(SecondFactorMethod.WebAuthn));
         expect(mocks.setLocalStorageMethod).not.toHaveBeenCalled();
         await waitFor(() => expect(props.onMethodChanged).toHaveBeenCalled());
     });
@@ -357,9 +325,9 @@ describe("method selection", () => {
 
         const { props } = renderForm();
 
-        fireEvent.click(screen.getByTestId("select-totp"));
+        fireEvent.click(screen.getByRole("tab", { name: "Security Key" }));
 
-        await waitFor(() => expect(mocks.setLocalStorageMethod).toHaveBeenCalledWith(SecondFactorMethod.TOTP));
+        await waitFor(() => expect(mocks.setLocalStorageMethod).toHaveBeenCalledWith(SecondFactorMethod.WebAuthn));
         expect(setPreferredMock).not.toHaveBeenCalled();
         await waitFor(() => expect(props.onMethodChanged).toHaveBeenCalled());
     });
@@ -369,7 +337,7 @@ describe("method selection", () => {
 
         const { props } = renderForm();
 
-        fireEvent.click(screen.getByTestId("select-totp"));
+        fireEvent.click(screen.getByRole("tab", { name: "Security Key" }));
 
         await waitFor(() =>
             expect(mocks.createErrorNotification).toHaveBeenCalledWith(
@@ -379,16 +347,12 @@ describe("method selection", () => {
         await waitFor(() => expect(props.onMethodChanged).toHaveBeenCalled());
     });
 
-    it("closes the dialog after a method is selected", async () => {
-        renderForm();
+    it("does nothing when the current method's tab is clicked", () => {
+        const { props } = renderForm();
 
-        fireEvent.click(screen.getByText("Methods"));
-        await waitFor(() => expect(screen.getByTestId("method-selection-dialog")).toHaveAttribute("data-open", "true"));
+        fireEvent.click(screen.getByRole("tab", { name: "Code" }));
 
-        fireEvent.click(screen.getByTestId("select-totp"));
-
-        await waitFor(() =>
-            expect(screen.getByTestId("method-selection-dialog")).toHaveAttribute("data-open", "false"),
-        );
+        expect(setPreferredMock).not.toHaveBeenCalled();
+        expect(props.onMethodChanged).not.toHaveBeenCalled();
     });
 });

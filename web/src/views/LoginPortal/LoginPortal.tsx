@@ -15,11 +15,13 @@ import {
     SecondFactorRoute,
     SecondFactorTOTPSubRoute,
     SecondFactorWebAuthnSubRoute,
+    SettingsRoute,
 } from "@constants/Routes";
 import { RedirectionURL } from "@constants/SearchParams";
 import { useLocalStorageMethodContext } from "@contexts/LocalStorageMethodContext";
 import { useNotifications } from "@contexts/NotificationsContext";
 import { useConfiguration } from "@hooks/Configuration";
+import { useFlowPresent } from "@hooks/Flow";
 import { useQueryParam } from "@hooks/QueryParam";
 import { useRedirector } from "@hooks/Redirector";
 import { useRouterNavigate } from "@hooks/RouterNavigate";
@@ -61,6 +63,7 @@ const LoginPortal = function (props: Props) {
     const [configuration, fetchConfiguration, , fetchConfigurationError] = useConfiguration();
 
     const navigate = useRouterNavigate();
+    const flowPresent = useFlowPresent();
 
     useEffect(() => {
         fetchState();
@@ -125,7 +128,14 @@ const LoginPortal = function (props: Props) {
             setFirstFactorDisabled(false);
             navigate(IndexRoute);
         } else if (state!.authentication_level >= AuthenticationLevel.OneFactor && userInfo && configuration) {
-            if (configuration.available_methods.size === 0) {
+            const authenticated =
+                state!.authentication_level >= AuthenticationLevel.TwoFactor ||
+                configuration.available_methods.size === 0;
+
+            if (authenticated && !flowPresent) {
+                // Signed in without anywhere to go back to: the account settings are the useful place to land.
+                navigate(SettingsRoute, false);
+            } else if (configuration.available_methods.size === 0) {
                 navigate(AuthenticatedRoute, false);
             } else {
                 const method = localStorageMethod || userInfo.method;
@@ -141,7 +151,7 @@ const LoginPortal = function (props: Props) {
                 }
             }
         }
-    }, [state, userInfo, configuration, navigate, localStorageMethod]);
+    }, [state, userInfo, configuration, navigate, localStorageMethod, flowPresent]);
 
     useEffect(() => {
         (async function () {

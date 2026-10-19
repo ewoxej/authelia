@@ -36,7 +36,7 @@ vi.mock("@services/WebAuthn", () => ({
     postWebAuthnResponse: vi.fn(),
 }));
 
-vi.mock("@components/WebAuthnTryIcon", () => ({
+vi.mock("@views/LoginPortal/SecondFactor/WebAuthnWait", () => ({
     default: (props: any) => (
         <div data-testid="webauthn-try-icon" data-state={props.webauthnTouchState}>
             <button data-testid="retry" onClick={() => props.onRetryClick()} />

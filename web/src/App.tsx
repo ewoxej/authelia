@@ -10,6 +10,7 @@ import { Route, BrowserRouter as Router, Routes } from "react-router";
 
 import { TooltipProvider } from "@components/UI/Tooltip";
 import {
+    AdminRoute,
     ConsentRoute,
     IndexRoute,
     LogoutRoute,
@@ -41,6 +42,7 @@ const SignOut = lazy(() => import("@views/LoginPortal/SignOut/SignOut"));
 const ResetPasswordStep1 = lazy(() => import("@views/ResetPassword/ResetPasswordStep1"));
 const ResetPasswordStep2 = lazy(() => import("@views/ResetPassword/ResetPasswordStep2"));
 const SettingsRouter = lazy(() => import("@views/Settings/SettingsRouter"));
+const AdminRouter = lazy(() => import("@views/Admin/AdminRouter"));
 const RevokeOneTimeCodeView = lazy(() => import("@views/Revoke/RevokeOneTimeCodeView"));
 const RevokeResetPasswordTokenView = lazy(() => import("@views/Revoke/RevokeResetPasswordTokenView"));
 
@@ -66,6 +68,7 @@ function App() {
                                                 element={<RevokeResetPasswordTokenView />}
                                             />
                                             <Route path={`${SettingsRoute}/*`} element={<SettingsRouter />} />
+                                            <Route path={`${AdminRoute}/*`} element={<AdminRouter />} />
                                             <Route path={`${ConsentRoute}/*`} element={<ConsentPortal />} />
                                             <Route
                                                 path={`${IndexRoute}*`}

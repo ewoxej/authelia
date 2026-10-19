@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/authelia/authelia/v4/internal/admin"
+
 	"github.com/spf13/cobra"
 
 	"github.com/authelia/authelia/v4/internal/logging"
@@ -107,9 +109,21 @@ func (ctx *CmdCtx) RootRunE(_ *cobra.Command, _ []string) (err error) {
 		}
 	}
 
+	ctx.providers.AdminConfiguration = admin.NewConfigurationManager(ctx.cconfig.files, ctx.cconfig.bfilters, ctx.trusted)
+
 	ctx.cconfig = nil
 
 	ctx.log.Trace("Starting Services")
 
-	return service.RunAll(ctx)
+	if err = service.RunAll(ctx); err != nil {
+		return err
+	}
+
+	if admin.RestartRequested() && !ctx.config.Administration.DisableRestart {
+		ctx.log.Info("Restarting Authelia")
+
+		return restartProcess()
+	}
+
+	return nil
 }

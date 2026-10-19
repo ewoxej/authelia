@@ -150,8 +150,8 @@ const ResetPasswordStep2 = function () {
     return (
         <MinimalLayout title={translate("Enter new password")} id="reset-password-step2-stage">
             <div id={"form-reset-password"}>
-                <div className="my-4 grid grid-cols-1 gap-4">
-                    <div className="w-full">
+                <div className="l-form">
+                    <div className="l-fld">
                         <Label htmlFor="password1-textfield">{translate("New password")}</Label>
                         <div className="relative">
                             <Input
@@ -174,7 +174,7 @@ const ResetPasswordStep2 = function () {
                             <PasswordMeter value={password1} policy={pPolicy} />
                         )}
                     </div>
-                    <div className="w-full">
+                    <div className="l-fld">
                         <Label htmlFor="password2-textfield">{translate("Repeat new password")}</Label>
                         <Input
                             id="password2-textfield"
@@ -192,8 +192,19 @@ const ResetPasswordStep2 = function () {
                             autoComplete="new-password"
                         />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="w-full">
+                    <div className="l-row">
+                        <div>
+                            <Button
+                                id="cancel-button"
+                                variant="outline"
+                                name="password2"
+                                onClick={handleCancelClick}
+                                className="w-full"
+                            >
+                                {translate("Cancel")}
+                            </Button>
+                        </div>
+                        <div>
                             <Button
                                 id="reset-button"
                                 variant="default"
@@ -203,17 +214,6 @@ const ResetPasswordStep2 = function () {
                                 className="w-full"
                             >
                                 {translate("Reset")}
-                            </Button>
-                        </div>
-                        <div className="w-full">
-                            <Button
-                                id="cancel-button"
-                                variant="default"
-                                name="password2"
-                                onClick={handleCancelClick}
-                                className="w-full"
-                            >
-                                {translate("Cancel")}
                             </Button>
                         </div>
                     </div>

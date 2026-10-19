@@ -10,8 +10,12 @@ vi.mock("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock("@components/SuccessIcon", () => ({
-    default: () => <div data-testid="success-icon" />,
+vi.mock("@components/Orb", () => ({
+    default: (props: any) => (
+        <div
+            data-testid={props.state === "ok" ? "success-icon" : props.state === "fail" ? "failure-icon" : "wait-icon"}
+        />
+    ),
 }));
 
 it("renders the authenticated stage with success icon", () => {

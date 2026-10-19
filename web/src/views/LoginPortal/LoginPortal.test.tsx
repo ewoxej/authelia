@@ -33,6 +33,7 @@ vi.mock("@constants/Routes", () => ({
     SecondFactorRoute: "/2fa",
     SecondFactorTOTPSubRoute: "/totp",
     SecondFactorWebAuthnSubRoute: "/webauthn",
+    SettingsRoute: "/settings",
 }));
 
 vi.mock("@contexts/LocalStorageMethodContext", () => ({
@@ -179,7 +180,7 @@ it("unauthenticated state navigates to IndexRoute", async () => {
     expect(mockNavigate).toHaveBeenCalledWith("/");
 });
 
-it("OneFactor with no 2FA methods navigates to /authenticated", async () => {
+it("OneFactor with no 2FA methods navigates to the settings", async () => {
     vi.mocked(useAutheliaState).mockReturnValue([
         { authentication_level: 1, factor_knowledge: true, username: "test" },
         vi.fn(),
@@ -208,7 +209,42 @@ it("OneFactor with no 2FA methods navigates to /authenticated", async () => {
     await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledTimes(1);
     });
-    expect(mockNavigate).toHaveBeenNthCalledWith(1, "/authenticated", false);
+    expect(mockNavigate).toHaveBeenNthCalledWith(1, "/settings", false);
+});
+
+it("TwoFactor without a redirection navigates to the settings", async () => {
+    vi.mocked(useAutheliaState).mockReturnValue([
+        { authentication_level: 2, factor_knowledge: true, username: "test" },
+        vi.fn(),
+        false,
+        undefined,
+    ]);
+    vi.mocked(useConfiguration).mockReturnValue([
+        {
+            available_methods: new Set([1]),
+            password_change_disabled: false,
+            password_reset_disabled: false,
+        },
+        vi.fn(),
+        false,
+        undefined,
+    ]);
+    vi.mocked(useUserInfoPOST).mockReturnValue([
+        { display_name: "test", emails: [], has_duo: false, has_totp: true, has_webauthn: false, method: 1 },
+        vi.fn(),
+        false,
+        undefined,
+    ]);
+
+    render(
+        <MemoryRouter>
+            <LoginPortal {...defaultProps} />
+        </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith("/settings", false);
+    });
 });
 
 it("OneFactor with TOTP preferred navigates to /2fa/totp", async () => {

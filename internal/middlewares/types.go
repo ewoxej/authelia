@@ -8,6 +8,8 @@ import (
 	"context"
 	"net"
 
+	"github.com/authelia/authelia/v4/internal/admin"
+
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
 
@@ -58,6 +60,8 @@ type Providers struct {
 	MetaDataService       webauthn.MetaDataProvider
 
 	GarbageCollector *GarbageCollector
+
+	AdminConfiguration *admin.ConfigurationManager
 
 	Random random.Provider
 	Clock  clock.Provider

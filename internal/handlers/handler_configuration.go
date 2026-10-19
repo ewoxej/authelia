@@ -23,6 +23,10 @@ func ConfigurationGET(ctx *middlewares.AutheliaCtx) {
 	body.PasswordChangeDisabled = ctx.Configuration.AuthenticationBackend.PasswordChange.Disable
 	body.PasswordResetDisabled = ctx.Configuration.AuthenticationBackend.PasswordReset.Disable
 
+	if userSession, err := ctx.GetSession(); err == nil {
+		body.Administrator = middlewares.IsAdministrator(ctx, &userSession)
+	}
+
 	ctx.Logger.WithFields(
 		map[string]any{
 			"available_methods":        body.AvailableMethods,

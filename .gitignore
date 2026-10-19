@@ -57,3 +57,6 @@ graphify-out/
 
 # Added by ggshield
 .cache_ggshield
+
+# Administration UI development environment data.
+/dev/admin/.data/

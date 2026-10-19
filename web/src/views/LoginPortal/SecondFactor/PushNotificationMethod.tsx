@@ -5,11 +5,10 @@
 import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import axios from "axios";
+import { Smartphone } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import FailureIcon from "@components/FailureIcon";
-import PushNotificationIcon from "@components/PushNotificationIcon";
-import SuccessIcon from "@components/SuccessIcon";
+import Orb from "@components/Orb";
 import { Button } from "@components/UI/Button";
 import { RedirectionURL } from "@constants/SearchParams";
 import { useAbortSignal } from "@hooks/Abort";
@@ -308,13 +307,13 @@ const PushNotificationMethod = function (props: Props) {
     let icon: ReactNode;
     switch (state) {
         case State.SignInInProgress:
-            icon = <PushNotificationIcon width={64} height={64} animated />;
+            icon = <Orb state="wait" icon={<Smartphone size={30} strokeWidth={1.6} aria-hidden />} />;
             break;
         case State.Success:
-            icon = <SuccessIcon />;
+            icon = <Orb state="ok" />;
             break;
         case State.Failure:
-            icon = <FailureIcon />;
+            icon = <Orb state="fail" />;
     }
 
     let methodState = MethodContainerState.METHOD;
@@ -335,12 +334,10 @@ const PushNotificationMethod = function (props: Props) {
             onSelectClick={handleFetchDuoDevices}
             onRegisterClick={() => window.open(enrollUrl, "_blank", "noopener,noreferrer")}
         >
-            <div className="flex w-full justify-center">{icon}</div>
-            <div className={state === State.Failure ? "" : "hidden"}>
-                <Button variant={"ghost"} color={"secondary"} onClick={handleSignIn}>
-                    {translate("Retry")}
-                </Button>
-            </div>
+            {icon}
+            <Button variant="outline" className={state === State.Failure ? "l-block" : "hidden"} onClick={handleSignIn}>
+                {translate("Retry")}
+            </Button>
         </MethodContainer>
     );
 };

@@ -271,10 +271,8 @@ const WebAuthnCredentialsPanel = function (props: Props) {
             />
             <Card id={"webauthn-credentials-panel"} data-loading={props.credentials === undefined ? "true" : "false"}>
                 <CardContent className="grid grid-cols-12 gap-4 p-4">
-                    <div className="col-span-12">
+                    <div className="col-span-12 flex items-center justify-between gap-3">
                         <h5 className="text-xl font-semibold">{translate("WebAuthn Credentials")}</h5>
-                    </div>
-                    <div className="col-span-12 md:col-span-2 xs:col-span-4">
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger

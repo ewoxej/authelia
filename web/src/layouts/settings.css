@@ -1,0 +1,251 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Authelia
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * The user settings use the administration design (admin.css). The shared components read the tokens below, which are
+ * set on the html element while the settings are open so dialogs rendered in portals get them too.
+ */
+
+html[data-portal-skin] {
+    --background: var(--a-card);
+    --foreground: var(--a-tx);
+    --card: var(--a-card);
+    --card-foreground: var(--a-tx);
+    --popover: var(--a-card);
+    --popover-foreground: var(--a-tx);
+    --muted: var(--a-chip);
+    --muted-foreground: var(--a-tx3);
+    --accent: var(--a-chip);
+    --accent-foreground: var(--a-tx);
+    --border: var(--a-border);
+    --input: var(--a-border);
+    --primary: var(--a-accent);
+    --primary-foreground: var(--a-on-accent);
+    --ring: var(--a-accent);
+    --destructive: var(--a-alert);
+    --radius: 0.75rem;
+
+    /* the visuals shared with the sign-in pages (one-time code, status orb) */
+    --l-panel: var(--a-panel);
+    --l-chip: var(--a-chip);
+    --l-border: var(--a-border);
+    --l-tx: var(--a-tx);
+    --l-tx2: var(--a-tx2);
+    --l-tx3: var(--a-tx3);
+    --l-accent: var(--a-accent);
+    --l-accent-12: var(--a-accent-12);
+    --l-accent-18: var(--a-accent-18);
+    --l-accent-30: var(--a-accent-30);
+    --l-alert: var(--a-alert);
+    --l-alert-tx: var(--a-alert-tx);
+    --l-alert-tint: var(--a-alert-tint);
+    --l-ok: #3fb984;
+    --l-ok-tint: rgba(63, 185, 132, 0.14);
+    --l-mono: var(--a-font-mono);
+    --l-sans: var(--a-font-sans);
+    --l-dur: var(--a-dur);
+    --l-ease: var(--a-ease);
+}
+
+html[data-portal-skin] body {
+    font-family: var(--a-font-sans);
+}
+
+html[data-portal-skin] [data-slot="dialog-content"],
+html[data-portal-skin] [data-slot="card"] {
+    border: 0;
+    border-radius: 16px;
+    box-shadow:
+        inset 0 0 0 1px var(--a-border),
+        var(--a-shadow-pop);
+    color: var(--a-tx);
+    font-family: var(--a-font-sans);
+}
+
+html[data-portal-skin] [data-slot="card"] {
+    box-shadow: inset 0 0 0 1px var(--a-border);
+}
+
+html[data-portal-skin] button[data-variant] {
+    border-radius: 10px;
+    font-family: var(--a-font-sans);
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+html[data-portal-skin] button[data-variant="outline"] {
+    border: 0;
+    background: var(--a-panel);
+    box-shadow: inset 0 0 0 1px var(--a-border);
+    color: var(--a-tx);
+    font-weight: 500;
+}
+
+html[data-portal-skin] button[data-variant="outline"]:hover:not(:disabled) {
+    background: var(--a-chip);
+}
+
+html[data-portal-skin] button[data-variant="ghost"] {
+    font-weight: 500;
+}
+
+html[data-portal-skin] input[data-slot="input"] {
+    height: 38px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--a-panel);
+    box-shadow: inset 0 0 0 1px var(--a-border);
+    color: var(--a-tx);
+}
+
+html[data-portal-skin] input[data-slot="input"]:focus {
+    box-shadow:
+        inset 0 0 0 1px var(--a-accent),
+        0 0 0 3px var(--a-accent-18);
+}
+
+/* content column of the settings pages */
+.adm.settings .settings-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 920px;
+}
+
+.adm.settings [data-slot="card"] h4,
+.adm.settings [data-slot="card"] h5,
+.adm.settings [data-slot="card"] h6 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+/* a credential inside a panel is a row, not a card of its own */
+.adm.settings [data-slot="card"] [data-slot="card"] {
+    background: var(--a-panel);
+    box-shadow: inset 0 0 0 1px var(--a-border-2);
+}
+
+.adm.settings [data-slot="card"] [data-slot="card"] > div {
+    padding: 12px 14px;
+}
+
+.adm.settings [data-slot="card"] {
+    padding-block: 6px;
+}
+
+/* label and value rows, i.e. the account details on the security page */
+.adm.settings .settings-rows {
+    gap: 0;
+    padding-block: 4px;
+}
+
+.adm.settings .settings-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 56px;
+    padding: 10px 20px;
+    border-top: 1px solid var(--a-border-2);
+}
+
+.adm.settings .settings-row:first-child {
+    border-top: 0;
+}
+
+.adm.settings .settings-label {
+    flex: 0 0 160px;
+    color: var(--a-tx2);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.adm.settings .settings-value {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 13.5px;
+}
+
+.adm.settings .settings-intro {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 20px;
+}
+
+.adm.settings .settings-intro p {
+    margin: 0;
+    color: var(--a-tx2);
+    font-size: 13.5px;
+}
+
+/* dialogs: a quiet header, secondary buttons and the last one as the main action */
+html[data-portal-skin] [data-slot="dialog-content"] {
+    gap: 18px;
+    padding: 22px 24px;
+}
+
+html[data-portal-skin] [data-slot="dialog-title"] {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+html[data-portal-skin] [data-slot="dialog-header"] p,
+html[data-portal-skin] [data-slot="dialog-description"] {
+    color: var(--a-tx2);
+    font-size: 13px;
+}
+
+html[data-portal-skin] [data-slot="dialog-footer"] {
+    gap: 8px;
+    padding-top: 4px;
+}
+
+html[data-portal-skin] [data-slot="dialog-footer"] button[data-variant] {
+    height: 36px;
+    padding: 0 14px;
+    border: 0;
+    background: var(--a-panel);
+    box-shadow: inset 0 0 0 1px var(--a-border);
+    color: var(--a-tx);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+html[data-portal-skin] [data-slot="dialog-footer"] button[data-variant]:hover:not(:disabled) {
+    background: var(--a-chip);
+}
+
+html[data-portal-skin] [data-slot="dialog-footer"] > button[data-variant]:last-child:not(:first-child),
+html[data-portal-skin] [data-slot="dialog-footer"] > :last-child:not(:first-child) button[data-variant] {
+    background: var(--a-accent);
+    box-shadow: none;
+    color: var(--a-on-accent);
+    font-weight: 600;
+}
+
+html[data-portal-skin] [data-slot="dialog-footer"] > button[data-variant]:last-child:not(:first-child):hover:not(:disabled) {
+    background: var(--a-accent-hover);
+}
+
+html[data-portal-skin] [data-slot="dialog-footer"] > button[data-variant][class*="text-destructive"]:last-child:not(:first-child) {
+    background: var(--a-alert);
+    color: #ffffff;
+}
+
+html[data-portal-skin] [data-slot="dialog-footer"] button[data-variant]:disabled {
+    opacity: 0.45;
+}
+
+/* the steps of the registration dialogs */
+html[data-portal-skin] [data-slot="step-label"] {
+    color: var(--a-tx3);
+    font-size: 11.5px;
+}

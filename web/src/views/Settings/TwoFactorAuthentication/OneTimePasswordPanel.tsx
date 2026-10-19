@@ -219,10 +219,8 @@ const OneTimePasswordPanel = function (props: Props) {
             />
             <Card id={"one-time-password-panel"} data-loading={props.config === undefined ? "true" : "false"}>
                 <CardContent className="grid grid-cols-12 gap-4 p-4">
-                    <div className="col-span-12">
+                    <div className="col-span-12 flex items-center justify-between gap-3">
                         <h5 className="text-xl font-semibold">{translate("One-Time Password")}</h5>
-                    </div>
-                    <div className="col-span-12">
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger
@@ -269,7 +267,7 @@ const OneTimePasswordPanel = function (props: Props) {
                             </p>
                         </div>
                     ) : (
-                        <div className="col-span-12 md:col-span-6 xl:col-span-3">
+                        <div className="col-span-12">
                             <OneTimePasswordConfiguration
                                 config={props.config}
                                 handleInformation={handleInformation}

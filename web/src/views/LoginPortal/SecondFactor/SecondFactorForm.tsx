@@ -2,15 +2,16 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { lazy, useState } from "react";
+import { ReactNode, lazy } from "react";
 
 import { browserSupportsWebAuthn } from "@simplewebauthn/browser";
+import { Fingerprint, KeyRound, Smartphone } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Route, Routes } from "react-router";
+import { Route, Routes, useLocation } from "react-router";
 
 import LogoutButton from "@components/LogoutButton";
 import SwitchUserButton from "@components/SwitchUserButton";
-import { Button } from "@components/UI/Button";
+import UserChip from "@components/UserChip";
 import {
     SecondFactorPasswordSubRoute,
     SecondFactorPushSubRoute,
@@ -29,7 +30,6 @@ import { SecondFactorMethod } from "@models/Methods";
 import { UserInfo } from "@models/UserInfo";
 import { AuthenticationLevel } from "@services/State";
 import { setPreferred2FAMethod } from "@services/UserInfo";
-import MethodSelectionDialog from "@views/LoginPortal/SecondFactor/MethodSelectionDialog";
 
 const OneTimePasswordMethod = lazy(() => import("@views/LoginPortal/SecondFactor/OneTimePasswordMethod"));
 const PushNotificationMethod = lazy(() => import("@views/LoginPortal/SecondFactor/PushNotificationMethod"));
@@ -55,12 +55,8 @@ const SecondFactorForm = function (props: Props) {
     const { localStorageMethodAvailable, setLocalStorageMethod } = useLocalStorageMethodContext();
     const { createErrorNotification } = useNotifications();
 
-    const [methodSelectionOpen, setMethodSelectionOpen] = useState(false);
+    const location = useLocation();
     const stateWebAuthnSupported = browserSupportsWebAuthn();
-
-    const handleMethodSelectionClick = () => {
-        setMethodSelectionOpen(true);
-    };
 
     const handleMethodSelected = async (method: SecondFactorMethod) => {
         if (localStorageMethodAvailable) {
@@ -69,7 +65,6 @@ const SecondFactorForm = function (props: Props) {
             await handleMethodSelectedFallback(method);
         }
 
-        setMethodSelectionOpen(false);
         props.onMethodChanged();
     };
 
@@ -84,100 +79,129 @@ const SecondFactorForm = function (props: Props) {
 
     const showMethods = props.factorKnowledge && props.configuration.available_methods.size > 1;
 
+    const tabs: { method: SecondFactorMethod; id: string; label: string; icon: ReactNode; route: string }[] = [];
+
+    if (props.configuration.available_methods.has(SecondFactorMethod.TOTP)) {
+        tabs.push({
+            icon: <KeyRound size={15} strokeWidth={1.8} aria-hidden />,
+            id: "one-time-password-option",
+            label: translate("Code"),
+            method: SecondFactorMethod.TOTP,
+            route: SecondFactorTOTPSubRoute,
+        });
+    }
+
+    if (props.configuration.available_methods.has(SecondFactorMethod.WebAuthn) && stateWebAuthnSupported) {
+        tabs.push({
+            icon: <Fingerprint size={15} strokeWidth={1.8} aria-hidden />,
+            id: "webauthn-option",
+            label: translate("Security Key"),
+            method: SecondFactorMethod.WebAuthn,
+            route: SecondFactorWebAuthnSubRoute,
+        });
+    }
+
+    if (props.configuration.available_methods.has(SecondFactorMethod.MobilePush)) {
+        tabs.push({
+            icon: <Smartphone size={15} strokeWidth={1.8} aria-hidden />,
+            id: "push-notification-option",
+            label: translate("Push"),
+            method: SecondFactorMethod.MobilePush,
+            route: SecondFactorPushSubRoute,
+        });
+    }
+
     return (
         <LoginLayout
             id={"second-factor-stage"}
-            title={`${translate("Hi")} ${props.userInfo.display_name}`}
+            title={translate("Confirm it's you")}
             userInfo={props.userInfo}
+            lead={
+                <UserChip name={props.userInfo.display_name}>
+                    {flowPresent ? <SwitchUserButton /> : <LogoutButton />}
+                </UserChip>
+            }
         >
-            {showMethods ? (
-                <MethodSelectionDialog
-                    open={methodSelectionOpen}
-                    methods={props.configuration.available_methods}
-                    webauthn={stateWebAuthnSupported}
-                    onClose={() => setMethodSelectionOpen(false)}
-                    onClick={handleMethodSelected}
-                />
-            ) : null}
-            <div className="flex flex-col items-center justify-center">
-                <div className="w-full">
-                    <LogoutButton />
-                    {flowPresent ? " | " : null}
-                    {flowPresent ? <SwitchUserButton /> : null}
-                    {showMethods ? " | " : null}
-                    {showMethods ? (
-                        <Button
-                            id={"methods-button"}
-                            variant={"ghost"}
-                            className="text-sm tracking-wide"
-                            color={"secondary"}
-                            onClick={handleMethodSelectionClick}
+            {showMethods && tabs.length > 1 ? (
+                <div className="l-tabs" role="tablist" aria-label={translate("Methods")} id="methods-tabs">
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.id}
+                            id={tab.id}
+                            type="button"
+                            role="tab"
+                            className="l-tab"
+                            aria-selected={location.pathname.endsWith(tab.route)}
+                            onClick={() =>
+                                location.pathname.endsWith(tab.route)
+                                    ? undefined
+                                    : handleMethodSelected(tab.method).catch(console.error)
+                            }
                         >
-                            {translate("Methods")}
-                        </Button>
-                    ) : null}
+                            {tab.icon}
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
-                <div className="my-4 min-w-[300px] rounded-[10px] border border-border p-8">
-                    <Routes>
-                        <Route
-                            path={SecondFactorPasswordSubRoute}
-                            element={
-                                <PasswordMethod
-                                    id="password-method"
-                                    authenticationLevel={props.authenticationLevel}
-                                    onAuthenticationSuccess={props.onAuthenticationSuccess}
-                                />
-                            }
+            ) : null}
+            <Routes>
+                <Route
+                    path={SecondFactorPasswordSubRoute}
+                    element={
+                        <PasswordMethod
+                            id="password-method"
+                            authenticationLevel={props.authenticationLevel}
+                            onAuthenticationSuccess={props.onAuthenticationSuccess}
                         />
-                        <Route
-                            path={SecondFactorTOTPSubRoute}
-                            element={
-                                <OneTimePasswordMethod
-                                    id={"one-time-password-method"}
-                                    authenticationLevel={props.authenticationLevel}
-                                    // Whether the user has a TOTP secret registered already
-                                    registered={props.userInfo.has_totp}
-                                    onRegisterClick={() => {
-                                        navigate(`${SettingsRoute}${SettingsTwoFactorAuthenticationSubRoute}`);
-                                    }}
-                                    onSignInError={(err) => createErrorNotification(err.message)}
-                                    onSignInSuccess={props.onAuthenticationSuccess}
-                                />
-                            }
+                    }
+                />
+                <Route
+                    path={SecondFactorTOTPSubRoute}
+                    element={
+                        <OneTimePasswordMethod
+                            id={"one-time-password-method"}
+                            authenticationLevel={props.authenticationLevel}
+                            // Whether the user has a TOTP secret registered already
+                            registered={props.userInfo.has_totp}
+                            onRegisterClick={() => {
+                                navigate(`${SettingsRoute}${SettingsTwoFactorAuthenticationSubRoute}`);
+                            }}
+                            onSignInError={(err) => createErrorNotification(err.message)}
+                            onSignInSuccess={props.onAuthenticationSuccess}
                         />
-                        <Route
-                            path={SecondFactorWebAuthnSubRoute}
-                            element={
-                                <WebAuthnMethod
-                                    id={"webauthn-method"}
-                                    authenticationLevel={props.authenticationLevel}
-                                    // Whether the user has a WebAuthn device registered already
-                                    registered={props.userInfo.has_webauthn}
-                                    onRegisterClick={() => {
-                                        navigate(`${SettingsRoute}${SettingsTwoFactorAuthenticationSubRoute}`);
-                                    }}
-                                    onSignInError={(err) => createErrorNotification(err.message)}
-                                    onSignInSuccess={props.onAuthenticationSuccess}
-                                />
-                            }
+                    }
+                />
+                <Route
+                    path={SecondFactorWebAuthnSubRoute}
+                    element={
+                        <WebAuthnMethod
+                            id={"webauthn-method"}
+                            authenticationLevel={props.authenticationLevel}
+                            // Whether the user has a WebAuthn device registered already
+                            registered={props.userInfo.has_webauthn}
+                            onRegisterClick={() => {
+                                navigate(`${SettingsRoute}${SettingsTwoFactorAuthenticationSubRoute}`);
+                            }}
+                            onSignInError={(err) => createErrorNotification(err.message)}
+                            onSignInSuccess={props.onAuthenticationSuccess}
                         />
-                        <Route
-                            path={SecondFactorPushSubRoute}
-                            element={
-                                <PushNotificationMethod
-                                    id={"push-notification-method"}
-                                    authenticationLevel={props.authenticationLevel}
-                                    duoSelfEnrollment={props.duoSelfEnrollment}
-                                    registered={props.userInfo.has_duo}
-                                    onSelectionClick={props.onMethodChanged}
-                                    onSignInError={(err) => createErrorNotification(err.message)}
-                                    onSignInSuccess={props.onAuthenticationSuccess}
-                                />
-                            }
+                    }
+                />
+                <Route
+                    path={SecondFactorPushSubRoute}
+                    element={
+                        <PushNotificationMethod
+                            id={"push-notification-method"}
+                            authenticationLevel={props.authenticationLevel}
+                            duoSelfEnrollment={props.duoSelfEnrollment}
+                            registered={props.userInfo.has_duo}
+                            onSelectionClick={props.onMethodChanged}
+                            onSignInError={(err) => createErrorNotification(err.message)}
+                            onSignInSuccess={props.onAuthenticationSuccess}
                         />
-                    </Routes>
-                </div>
-            </div>
+                    }
+                />
+            </Routes>
         </LoginLayout>
     );
 };

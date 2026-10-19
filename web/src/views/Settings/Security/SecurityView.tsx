@@ -28,8 +28,7 @@ const PasswordChangeButton = ({ configuration, handleChangePassword, translate }
     const buttonContent = (
         <Button
             id="change-password-button"
-            variant="default"
-            className="p-2 w-full"
+            variant="outline"
             onClick={handleChangePassword}
             disabled={!configuration || configuration.password_change_disabled}
         >
@@ -204,43 +203,31 @@ const SettingsView = function () {
                 }}
             />
 
-            <div className="flex items-start justify-center h-screen pt-16">
-                <Card className="flex items-center justify-center h-auto">
-                    <div className="flex flex-col gap-4 m-4 w-full">
-                        <div className="p-2 md:p-6">
-                            <div className="border border-muted-foreground/50 rounded mb-2 p-2.5 w-full">
-                                <p>
-                                    {translate("Name")}: {userInfo?.display_name || ""}
-                                </p>
-                            </div>
-                            <div className="border border-muted-foreground/50 rounded mb-2 p-2.5 w-full">
-                                <div className="flex items-center">
-                                    <p className="mr-2">{translate("Email")}:</p>
-                                    <p>{userInfo?.emails?.[0] || ""}</p>
-                                </div>
-                                {userInfo?.emails && userInfo.emails.length > 1 && (
-                                    <ul className="p-0 pl-8 w-full">
-                                        {" "}
-                                        {userInfo.emails.slice(1).map((email: string) => (
-                                            <li key={email} className="py-0">
-                                                <p>{email}</p>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
-                            <div className="border border-muted-foreground/50 rounded mb-2 p-2.5">
-                                <p>{translate("Password")}: ●●●●●●●●</p>
-                            </div>
-                            <PasswordChangeButton
-                                configuration={configuration}
-                                translate={translate}
-                                handleChangePassword={handleChangePassword}
-                            />
-                        </div>
-                    </div>
-                </Card>
-            </div>
+            <Card className="settings-rows">
+                <div className="settings-row">
+                    <span className="settings-label">{translate("Name")}</span>
+                    <span className="settings-value">{userInfo?.display_name || ""}</span>
+                </div>
+                <div className="settings-row">
+                    <span className="settings-label">{translate("Email")}</span>
+                    <span className="settings-value">
+                        {(userInfo?.emails ?? []).map((email: string) => (
+                            <span key={email} className="block">
+                                {email}
+                            </span>
+                        ))}
+                    </span>
+                </div>
+                <div className="settings-row">
+                    <span className="settings-label">{translate("Password")}</span>
+                    <span className="settings-value mono">●●●●●●●●</span>
+                    <PasswordChangeButton
+                        configuration={configuration}
+                        translate={translate}
+                        handleChangePassword={handleChangePassword}
+                    />
+                </div>
+            </Card>
         </Fragment>
     );
 };

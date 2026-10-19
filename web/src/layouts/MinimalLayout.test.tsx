@@ -10,10 +10,6 @@ vi.mock("react-i18next", () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock("@assets/images/user.svg?react", () => ({
-    default: (props: any) => <svg data-testid="user-svg" {...props} />,
-}));
-
 vi.mock("@components/AppBarLoginPortal", () => ({
     default: () => <div data-testid="app-bar" />,
 }));
@@ -22,11 +18,8 @@ vi.mock("@components/PrivacyPolicyDrawer", () => ({
     default: () => <div data-testid="privacy-policy" />,
 }));
 
-vi.mock("@components/TypographyWithTooltip", () => ({
-    default: (props: any) => <span data-testid={`typography-${props.variant}`}>{props.value}</span>,
-}));
-
 vi.mock("@constants/constants", () => ({
+    BrandName: "Janus",
     EncodedName: [81, 88, 86, 48, 97, 71, 86, 115, 97, 87, 69, 61],
 }));
 
@@ -39,7 +32,7 @@ it("renders with default SVG logo", async () => {
         render(<MinimalLayout />);
     });
 
-    expect(screen.getByTestId("user-svg")).toBeInTheDocument();
+    expect(screen.getByTestId("brand-mark")).toBeInTheDocument();
     expect(screen.getByTestId("app-bar")).toBeInTheDocument();
     expect(screen.getByTestId("privacy-policy")).toBeInTheDocument();
 });
@@ -53,7 +46,7 @@ it("renders with image logo when override is enabled", async () => {
     });
 
     expect(screen.getByAltText("Logo")).toBeInTheDocument();
-    expect(screen.queryByTestId("user-svg")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("brand-mark")).not.toBeInTheDocument();
 
     vi.mocked(getLogoOverride).mockReturnValue(false);
 });
@@ -63,7 +56,7 @@ it("renders title when provided", async () => {
         render(<MinimalLayout title="Test Title" />);
     });
 
-    expect(screen.getByTestId("typography-h5")).toHaveTextContent("Test Title");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Test Title");
 });
 
 it("does not render title when not provided", async () => {
@@ -71,7 +64,7 @@ it("does not render title when not provided", async () => {
         render(<MinimalLayout />);
     });
 
-    expect(screen.queryByTestId("typography-h5")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
 });
 
 it("renders children", async () => {

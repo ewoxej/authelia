@@ -903,11 +903,11 @@ it("gives the submission the filled treatment and the cancellation the outlined 
     expect(screen.getByRole("button", { name: /Cancel/ })).toHaveAttribute("data-variant", "outline");
 });
 
-it("separates the account actions", async () => {
-    const { container } = await renderLoaded();
+it("shows the account actions next to the signed in user", async () => {
+    await renderLoaded();
 
-    const separator = container.querySelector("[data-slot='separator']");
+    const { getByTestId } = render(<>{mocks.layoutProps.current.lead}</>);
 
-    expect(separator).toBeInTheDocument();
-    expect(separator).toHaveAttribute("data-orientation", "vertical");
+    expect(getByTestId("logout-button")).toBeInTheDocument();
+    expect(getByTestId("switch-user-button")).toBeInTheDocument();
 });

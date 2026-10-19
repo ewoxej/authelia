@@ -14,9 +14,9 @@ interface Props {
 
 const WebAuthnCredentialsGrid = function (props: Props) {
     return (
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-12 gap-3">
             {props.credentials.map((credential, index) => (
-                <div className="col-span-12 md:col-span-6 xl:col-span-3" key={credential.id}>
+                <div className="col-span-12" key={credential.id}>
                     <WebAuthnCredentialItem
                         index={index}
                         credential={credential}

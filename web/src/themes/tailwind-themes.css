@@ -54,7 +54,9 @@
     --radius: 0.5rem;
 
     --custom-icon: oklch(0 0 0);
-    --custom-loading-bar: oklch(0 0 0);
+    --custom-loading-bar: #2563eb;
+    /* the page behind the content, i.e. while loading, matches the sign-in and administration pages */
+    --custom-page-background: #eef3f0;
 
     --divider: oklch(0 0 0 / 0.12);
 
@@ -103,7 +105,9 @@
     --radius: 0.5rem;
 
     --custom-icon: oklch(1 0 0);
-    --custom-loading-bar: oklch(1 0 0);
+    --custom-loading-bar: #4d8ef7;
+    /* the page behind the content, i.e. while loading, matches the sign-in and administration pages */
+    --custom-page-background: #0a0f0d;
 
     --divider: oklch(1 0 0 / 0.12);
 
@@ -152,7 +156,9 @@
     --radius: 0.5rem;
 
     --custom-icon: oklch(0.683 0.019 256.31);
-    --custom-loading-bar: oklch(0.683 0.019 256.31);
+    --custom-loading-bar: #4d8ef7;
+    /* the page behind the content, i.e. while loading, matches the sign-in and administration pages */
+    --custom-page-background: #1f2221;
 
     --divider: oklch(0 0 0 / 0.12);
 
@@ -201,7 +207,9 @@
     --radius: 0.5rem;
 
     --custom-icon: oklch(1 0 0);
-    --custom-loading-bar: oklch(1 0 0);
+    --custom-loading-bar: #4d8ef7;
+    /* the page behind the content, i.e. while loading, matches the sign-in and administration pages */
+    --custom-page-background: #000000;
 
     --divider: oklch(1 0 0 / 0.12);
 

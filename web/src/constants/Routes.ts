@@ -21,6 +21,12 @@ export const RevokeOneTimeCodeRoute: string = "/revoke/one-time-code";
 export const RevokeResetPasswordRoute: string = "/revoke/reset-password";
 export const SecuritySubRoute: string = "/security";
 
+export const AdminRoute: string = "/admin";
+export const AdminUsersSubRoute: string = "/users";
+export const AdminConfigurationSubRoute: string = "/configuration";
+export const AdminActivitySubRoute: string = "/activity";
+export const AdminBansSubRoute: string = "/bans";
+
 export const ConsentRoute: string = "/consent";
 export const ConsentCompletionSubRoute: string = "/completion";
 export const ConsentOpenIDSubRoute: string = "/openid";

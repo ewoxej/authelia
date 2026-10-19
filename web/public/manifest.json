@@ -1,6 +1,6 @@
 {
-  "short_name": "Authelia WebApp",
-  "name": "Authelia Web Application",
+  "short_name": "Janus",
+  "name": "Janus",
   "icons": [
     {
       "src": "favicon.ico",

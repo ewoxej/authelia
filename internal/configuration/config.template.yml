@@ -284,7 +284,7 @@
   # enable_passkey_login: false
 
   ## The display name the browser should show the user for when using WebAuthn to login/register.
-  # display_name: 'Authelia'
+  # display_name: 'Janus'
 
   ## Conveyance preference controls if we collect the attestation statement including the AAGUID from the device.
   ## Options are none, indirect, direct.
@@ -1050,6 +1050,27 @@ session:
   # ban_time: '5 minutes'
 
 ##
+## Administration Configuration
+##
+## The administration web UI available at '/admin' allows members of the administrator group to manage users, second
+## factors, bans, consents and the configuration files. It requires two-factor authentication and identity verification.
+# administration:
+  ## Enables the administration web UI and API.
+  # enabled: false
+
+  ## The group whose members are allowed to use the administration web UI.
+  # admin_group: 'admins'
+
+  ## The directories the file picker of the administration web UI can browse. Defaults to the directories of the
+  ## configuration files.
+  # file_roots:
+  #   - '/config'
+  #   - '/secrets'
+
+  ## Prevents the administration web UI from restarting Authelia after configuration changes.
+  # disable_restart: false
+
+##
 ## Storage Provider Configuration
 ##
 ## The available providers are: `local`, `mysql`, `postgres`. You must use one and only one of these providers.
@@ -1268,7 +1289,7 @@ session:
     # identifier: 'localhost'
 
     ## Subject configuration of the emails sent. {title} is replaced by the text from the notifier.
-    # subject: '[Authelia] {title}'
+    # subject: '[Janus] {title}'
 
     ## This address is used during the startup check to verify the email configuration is correct.
     ## It's not important what it is except if your email server only allows local delivery.

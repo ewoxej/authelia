@@ -8,6 +8,7 @@ import (
 	"context"
 	"net"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -78,6 +79,10 @@ type Server struct {
 	isTLS    bool
 	listener net.Listener
 	log      *logrus.Entry
+
+	// stopping is set by Shutdown. fasthttp doesn't stop a server which starts serving after it was shut down, so the
+	// listener is closed as well and the resulting serve error is expected while stopping.
+	stopping atomic.Bool
 }
 
 // ServiceType returns the service type for this service, which is always 'server'.
@@ -101,6 +106,10 @@ func (service *Server) Run() (err error) {
 	service.log.Infof(fmtLogServerListening, connectionType(service.isTLS), service.listener.Addr().String(), strings.Join(service.paths, "' and '"))
 
 	if err = service.server.Serve(service.listener); err != nil {
+		if service.stopping.Load() {
+			return nil
+		}
+
 		service.log.WithError(err).Error("Error returned attempting to serve requests")
 
 		return err
@@ -115,9 +124,14 @@ func (service *Server) Shutdown() {
 
 	defer cancel()
 
+	service.stopping.Store(true)
+
 	if err := service.server.ShutdownWithContext(ctx); err != nil {
 		service.log.WithError(err).Error("Error occurred during shutdown")
 	}
+
+	// Closing the listener ensures Run returns when Shutdown happened before the server started serving.
+	_ = service.listener.Close()
 }
 
 // Log returns the *logrus.Entry of the Server.
