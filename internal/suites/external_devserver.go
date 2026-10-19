@@ -41,14 +41,6 @@ type DevServerConfig struct {
 	Script        string
 }
 
-// HugoDocsDevServer is the DevServerConfig for the Hugo documentation site at docs/.
-var HugoDocsDevServer = DevServerConfig{
-	Name:       "hugo-docs",
-	ProjectDir: "docs",
-	Port:       1313,
-	Script:     "ci",
-}
-
 // ReactEmailTemplatesDevServer is the DevServerConfig for the react-email template source at
 // internal/templates/src.
 var ReactEmailTemplatesDevServer = DevServerConfig{

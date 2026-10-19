@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-export PATH=${PATH}:${PWD}/cmd/dev/:${PWD}/.buildkite/steps/:${GOPATH}/bin:${PWD}/web/node_modules/.bin:/tmp \
+export PATH=${PATH}:${PWD}/cmd/dev/:${GOPATH}/bin:${PWD}/web/node_modules/.bin:/tmp \
 DOCKER_BUILDKIT=1
 
 if [[ -z "${OLD_PS1}" ]]; then

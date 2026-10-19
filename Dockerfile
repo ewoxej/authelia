@@ -2,16 +2,55 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-# ===================================
-# ===== Authelia official image =====
-# ===================================
-ARG TAG
-ARG SHA
+# ========================================
+# ===== Build image for the frontend =====
+# ========================================
+FROM node:26-alpine@sha256:6f08a523443ddedf52941874c203475b0ad503e859ad70cb26ab8be9a517dbd5 AS builder-frontend
 
-FROM authelia/base:${TAG}@sha256:${SHA}
+WORKDIR /node/src/app
 
-ARG TARGETOS
-ARG TARGETARCH
+ENV \
+	SHELL="/bin/sh" \
+	PNPM_HOME="/usr/local"
+
+COPY --link web ./
+
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+	wget -qO /tmp/pnpm-install.sh https://raw.githubusercontent.com/pnpm/get.pnpm.io/29fc8463b5b8fb84ad809d9956a40de03877b089/install.sh && \
+	ENV="/root/.profile" sh /tmp/pnpm-install.sh && \
+	pnpm install --frozen-lockfile --ignore-scripts --store-dir /pnpm/store && \
+	pnpm build
+
+# =======================================
+# ===== Build image for the backend =====
+# =======================================
+FROM golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61 AS builder-backend
+
+WORKDIR /go/src/app
+
+COPY --link go.mod go.sum ./
+
+RUN \
+	echo ">> Downloading go modules..." && \
+	go mod download
+
+COPY --link / ./
+
+# Prepare static files to be embedded in Go binary
+COPY --link --from=builder-frontend /node/src/internal/server/public_html internal/server/public_html
+
+ARG LDFLAGS_EXTRA
+
+RUN \
+	mv api internal/server/public_html/api && \
+	echo ">> Starting go build..." && \
+	CGO_ENABLED=1 CGO_CPPFLAGS="-D_FORTIFY_SOURCE=2 -fstack-protector-strong" CGO_LDFLAGS="-Wl,-z,relro,-z,now" go build \
+	-ldflags "-linkmode=external -s -w ${LDFLAGS_EXTRA}" -trimpath -buildmode=pie -o authelia ./cmd/authelia
+
+# ========================
+# ===== Janus image =====
+# ========================
+FROM authelia/base:latest@sha256:c9cedf4fc61cae856cf628718cbd69395a737eeb2a8687833cba1abd707125f7
 
 WORKDIR /app
 
@@ -21,9 +60,9 @@ ENV \
 	PGID=0 \
 	X_AUTHELIA_CONFIG="/config/configuration.yml"
 
-COPY --link authelia-${TARGETOS}-${TARGETARCH}/authelia LICENSE entrypoint.sh healthcheck.sh ./
+COPY --link --from=builder-backend /go/src/app/authelia /go/src/app/LICENSE /go/src/app/entrypoint.sh /go/src/app/healthcheck.sh ./
 
-COPY --link --chmod=666 .healthcheck.env ./
+COPY --link --from=builder-backend --chmod=666 /go/src/app/.healthcheck.env ./
 
 EXPOSE 9091
 

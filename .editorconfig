@@ -18,10 +18,6 @@ indent_size = 2
 [*.{js,sql,ts.tmpl}]
 indent_style = space
 
-[.buildkite/hooks/**]
-indent_style = space
-indent_size = 2
-
 [internal/suites/example/compose/nginx/*/*.conf]
 charset                     = UTF-8
 indent_style                = space

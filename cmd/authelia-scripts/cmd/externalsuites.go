@@ -30,7 +30,6 @@ var (
 )
 
 var externalSuiteTestEntrypoints = map[string]string{
-	"docs":      "TestDocsSuite",
 	"templates": "TestTemplatesSuite",
 }
 

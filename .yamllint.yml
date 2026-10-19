@@ -16,9 +16,6 @@ ignore: |
   .claude/
   api/openapi.yml
   dist/public_html/api/openapi.yml
-  docs/pnpm-lock.yaml
-  docs/pnpm-workspace.yaml
-  docs/node_modules/
   internal/configuration/test_resources/config_bad_quoting.yml
   internal/templates/src/pnpm-lock.yaml
   internal/templates/src/pnpm-workspace.yaml
@@ -26,8 +23,6 @@ ignore: |
   web/pnpm-lock.yaml
   web/pnpm-workspace.yaml
   web/node_modules/
-  .github/ISSUE_TEMPLATE/feature-request.yml
-  .github/ISSUE_TEMPLATE/bug-report.yml
   internal/suites/
 rules:
   document-start:

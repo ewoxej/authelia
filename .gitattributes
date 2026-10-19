@@ -31,8 +31,6 @@ LICENSE text
 
 # RFC2822 requires us to save the email templates with CRLF line endings.
 internal/templates/src/notification/* text eol=crlf
-examples/templates/notifications/*.tmpl text eol=crlf
-examples/templates/notifications/*.html text eol=crlf
 
 # shellcheck rejects literal carriage returns in its config (SC1017).
 .shellcheckrc text eol=lf

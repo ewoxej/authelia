@@ -37,16 +37,6 @@ async function doRender() {
     fs.writeFileSync("../embed/notification/Event.html", await render(<Event {...propsEvent} />, optsHTML));
     fs.writeFileSync("../embed/notification/Event.txt", await render(<Event {...propsEvent} />, optsTXT));
 
-    const propsEventNoPreview = {
-        ...propsEvent,
-        hidePreview: true,
-    };
-
-    fs.writeFileSync(
-        "../../../examples/templates/notifications/no-preview/Event.html",
-        await render(<Event {...propsEventNoPreview} />, optsHTML),
-    );
-
     const propsJWT = {
         title: "{{ .Title }}",
         displayName: "{{ .DisplayName }}",
@@ -72,16 +62,6 @@ async function doRender() {
         await render(<IdentityVerificationJWT {...propsJWTTxt} />, optsTXT),
     );
 
-    const propsJWTNoPreview = {
-        ...propsJWT,
-        hidePreview: true,
-    };
-
-    fs.writeFileSync(
-        "../../../examples/templates/notifications/no-preview/IdentityVerificationJWT.html",
-        await render(<IdentityVerificationJWT {...propsJWTNoPreview} />, optsHTML),
-    );
-
     const propsOTC = {
         title: "{{ .Title }}",
         displayName: "{{ .DisplayName }}",
@@ -104,16 +84,6 @@ async function doRender() {
     fs.writeFileSync(
         "../embed/notification/IdentityVerificationOTC.txt",
         await render(<IdentityVerificationOTC {...propsOTCTxt} />, optsTXT),
-    );
-
-    const propsOTCNoPreview = {
-        ...propsOTC,
-        hidePreview: true,
-    };
-
-    fs.writeFileSync(
-        "../../../examples/templates/notifications/no-preview/IdentityVerificationOTC.html",
-        await render(<IdentityVerificationOTC {...propsOTCNoPreview} />, optsHTML),
     );
 }
 

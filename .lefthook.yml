@@ -34,11 +34,6 @@ pre-commit:
       group:
         parallel: true
         jobs:
-          - name: docs
-            run: pnpm --reporter=silent lint {staged_files} && echo "0 issues."
-            root: "docs/"
-            stage_fixed: true
-
           - name: eslint
             run: pnpm --reporter=silent lint {staged_files} && echo "0 issues."
             root: "web/"
@@ -58,15 +53,6 @@ pre-commit:
             # change that strips coverage from unstaged files needs a full project lint.
             run: reuse lint --lines && echo "0 issues."
             glob: "{REUSE.toml,LICENSES/*}"
-
-          - name: scorecard
-            run: .buildkite/steps/lint.sh scorecard && echo "0 issues."
-            glob:
-              - "*Dockerfile*"
-              - ".github/workflows/*"
-              - ".buildkite/hooks/*"
-              - ".renovaterc*"
-              - "*.sh"
 
           - name: shellcheck
             run: shellcheck --format=gcc {staged_files} && echo "0 issues."
