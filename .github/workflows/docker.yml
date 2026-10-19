@@ -10,8 +10,6 @@ on:
   push:
     branches:
       - master
-    tags:
-      - 'v*'
   pull_request:
     branches:
       - master
@@ -47,17 +45,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Read the version
+        id: version
+        run: echo "version=$(tr -d '[:space:]' < VERSION)" >> "$GITHUB_OUTPUT"
+
       - name: Image metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=ref,event=branch
             type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ steps.version.outputs.version }},enable={{is_default_branch}}
             type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,enable={{is_default_branch}}
 
       - name: Build and push
         uses: docker/build-push-action@v6
