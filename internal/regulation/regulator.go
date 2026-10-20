@@ -144,6 +144,12 @@ func (r *Regulator) handleAttemptPossibleBannedUser(ctx Context, since time.Time
 	}
 }
 
+// BanCheckIP returns the ban in effect for the request IP. Unlike a user ban it can be told to whoever makes the request
+// as it doesn't depend on, and so doesn't reveal, whether the username exists.
+func (r *Regulator) BanCheckIP(ctx Context) (ban BanType, value string, expires *time.Time, err error) {
+	return r.banCheckIP(ctx)
+}
+
 func (r *Regulator) banCheckIP(ctx Context) (ban BanType, value string, expires *time.Time, err error) {
 	ip := model.NewIP(ctx.RemoteIP())
 

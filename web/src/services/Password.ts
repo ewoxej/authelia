@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+import axios from "axios";
+
 import { CompletePasswordSignInPath, FirstFactorPath, FirstFactorReauthenticatePath } from "@services/Api";
 import { PostWithOptionalResponse } from "@services/Client";
 import { SignInResponse } from "@services/SignIn";
@@ -103,4 +105,21 @@ export async function postSecondFactor(
 
     const res = await PostWithOptionalResponse<SignInResponse>(CompletePasswordSignInPath, data);
     return res ?? ({} as SignInResponse);
+}
+
+export interface SignInBan {
+    // When sign-in is possible again in milliseconds since the epoch, absent when the ban doesn't expire.
+    until?: number;
+}
+
+/**
+ * Returns the ban of the network a failed first factor attempt was refused for, or undefined if it wasn't. A ban of
+ * the user isn't told apart from wrong credentials by the server.
+ */
+export function signInBan(err: unknown, now = Date.now()): SignInBan | undefined {
+    if (!axios.isAxiosError(err) || err.response?.status !== 403) return undefined;
+
+    const retryAfter = Number.parseInt(String(err.response.headers?.["retry-after"] ?? ""), 10);
+
+    return Number.isFinite(retryAfter) && retryAfter > 0 ? { until: now + retryAfter * 1000 } : {};
 }

@@ -4,7 +4,7 @@
 
 import { ReactNode, useEffect, useState } from "react";
 
-import { Activity, Ban, ChevronRight, LayoutGrid, SlidersHorizontal, User, Users } from "lucide-react";
+import { Activity, Ban, ChevronRight, LayoutGrid, LogOut, SlidersHorizontal, User, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router";
 
@@ -19,7 +19,9 @@ import {
     AdminUsersSubRoute,
     SettingsRoute,
 } from "@constants/Routes";
+import { setSignedIn } from "@hooks/LoginMark";
 import { useRouterNavigate } from "@hooks/RouterNavigate";
+import { useSignOut } from "@hooks/SignOut";
 import { AdminOverview } from "@services/Admin";
 import { Avatar, Key, useAdminTheme } from "@views/Admin/Common/ui";
 import { sections, wholeFileSection } from "@views/Admin/Configuration/Sections";
@@ -33,6 +35,7 @@ const AdminLayout = function (props: { overview?: AdminOverview; children: React
     useAdminTheme(props.overview?.theme);
     const location = useLocation();
     const navigate = useRouterNavigate();
+    const signOut = useSignOut();
 
     const configurationBase = `${AdminRoute}${AdminConfigurationSubRoute}`;
     const inConfiguration = location.pathname.startsWith(configurationBase);
@@ -48,6 +51,10 @@ const AdminLayout = function (props: { overview?: AdminOverview; children: React
             setConfigurationOpen(true);
         }
     }
+
+    useEffect(() => {
+        setSignedIn(true);
+    }, []);
 
     useEffect(() => {
         document.title = translate("Administration - {{authelia}}", {
@@ -141,6 +148,10 @@ const AdminLayout = function (props: { overview?: AdminOverview; children: React
                     <div className="side-foot">
                         <div className="divider" style={{ margin: "0 4px 10px" }} />
                         {nav(SettingsRoute, "My Settings", <User {...iconProps} />, "settings")}
+                        <button id="admin-menu-logout" type="button" className="nav" onClick={() => signOut(false)}>
+                            <LogOut {...iconProps} />
+                            {translate("Logout")}
+                        </button>
                         {props.overview ? (
                             <span className="mono tx3" style={{ fontSize: 11, padding: "8px 12px 0" }}>
                                 {props.overview.version} · fork {props.overview.fork_version}

@@ -46,7 +46,7 @@ func FirstFactorPasswordPOST(delayer middlewares.Delayer) middlewares.RequestHan
 
 			ctx.Logger.WithError(err).Errorf("Error occurred getting details for user with username input '%s' which usually indicates they do not exist", bodyJSON.Username)
 
-			respondUnauthorized(ctx, messageAuthenticationFailed)
+			respondFirstFactorFailed(ctx)
 
 			return
 		}
@@ -55,7 +55,11 @@ func FirstFactorPasswordPOST(delayer middlewares.Delayer) middlewares.RequestHan
 			if errors.Is(err, regulation.ErrUserIsBanned) {
 				doMarkAuthenticationAttempt(ctx, false, regulation.NewBan(ban, details.Username, expires), regulation.AuthType1FA, nil)
 
-				respondUnauthorized(ctx, messageAuthenticationFailed)
+				if ban == regulation.BanTypeIP {
+					respondBannedIP(ctx, expires)
+				} else {
+					respondUnauthorized(ctx, messageAuthenticationFailed)
+				}
 
 				return
 			}
@@ -83,7 +87,7 @@ func FirstFactorPasswordPOST(delayer middlewares.Delayer) middlewares.RequestHan
 		if !userPasswordOk {
 			doMarkAuthenticationAttempt(ctx, false, regulation.NewBan(regulation.BanTypeNone, details.Username, nil), regulation.AuthType1FA, nil)
 
-			respondUnauthorized(ctx, messageAuthenticationFailed)
+			respondFirstFactorFailed(ctx)
 
 			return
 		}
@@ -217,7 +221,11 @@ func FirstFactorReauthenticatePOST(delayer middlewares.Delayer) middlewares.Requ
 			if errors.Is(err, regulation.ErrUserIsBanned) {
 				doMarkAuthenticationAttempt(ctx, false, regulation.NewBan(ban, value, expires), regulation.AuthType1FA, nil)
 
-				respondUnauthorized(ctx, messageAuthenticationFailed)
+				if ban == regulation.BanTypeIP {
+					respondBannedIP(ctx, expires)
+				} else {
+					respondUnauthorized(ctx, messageAuthenticationFailed)
+				}
 
 				return
 			}
@@ -241,7 +249,7 @@ func FirstFactorReauthenticatePOST(delayer middlewares.Delayer) middlewares.Requ
 		if !userPasswordOk {
 			doMarkAuthenticationAttempt(ctx, false, regulation.NewBan(regulation.BanTypeNone, userSession.Username, nil), regulation.AuthType1FA, nil)
 
-			respondUnauthorized(ctx, messageAuthenticationFailed)
+			respondFirstFactorFailed(ctx)
 
 			return
 		}

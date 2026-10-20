@@ -2,37 +2,24 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { cn } from "cn";
+import JanusLogo from "@components/JanusLogo";
+import { isSignedIn } from "@hooks/LoginMark";
 
 export interface Props {
     message: string;
+    // Shows the keyhole of the coin whole, defaults to whether the user is known to be signed in.
+    joined?: boolean;
 }
 
-const delays = [
-    "[animation-delay:0.1s]",
-    "[animation-delay:0.2s]",
-    "[animation-delay:0.3s]",
-    "[animation-delay:0.4s]",
-    "[animation-delay:0.5s]",
-];
-
+/** A coin spinning around its horizontal axis while the page loads. */
 const BaseLoadingPage = function (props: Props) {
+    const joined = props.joined ?? isSignedIn();
+
     return (
         <div className="grid min-h-screen items-center justify-center">
             <div className="inline-block text-center">
-                <div className="p-4">
-                    <span className="inline-flex">
-                        {delays.map((delay) => (
-                            <span
-                                key={delay}
-                                className={cn(
-                                    "mx-0.5 inline-block h-[35px] w-1 rounded-[2px]",
-                                    "bg-[var(--custom-loading-bar)] animate-scale-loader",
-                                    delay,
-                                )}
-                            />
-                        ))}
-                    </span>
+                <div className="janus-coin p-4" data-joined={joined}>
+                    <JanusLogo size={56} joined={joined} />
                 </div>
                 <div className="p-4">
                     <p>{props.message}...</p>

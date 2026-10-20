@@ -6,9 +6,13 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"math"
 	"net"
 	"net/url"
+	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -503,6 +507,31 @@ func doMarkAuthenticationAttemptWithRequest(ctx markContext, successful bool, ba
 			ctx.GetLogger().Errorf("Unsuccessful %s authentication attempt by user '%s'", authType, ban.Value())
 		}
 	}
+}
+
+// respondFirstFactorFailed responds to a failed first factor attempt, telling a ban of the request IP apart as it doesn't
+// reveal anything about the username. A ban of the user is not told apart as only existing users are banned.
+func respondFirstFactorFailed(ctx *middlewares.AutheliaCtx) {
+	ban, _, expires, err := ctx.Providers.Regulator.BanCheckIP(ctx)
+
+	if !errors.Is(err, regulation.ErrUserIsBanned) || ban != regulation.BanTypeIP {
+		respondUnauthorized(ctx, messageAuthenticationFailed)
+
+		return
+	}
+
+	respondBannedIP(ctx, expires)
+}
+
+// respondBannedIP responds that sign-in from the request IP is banned, with when the ban expires if it does.
+func respondBannedIP(ctx *middlewares.AutheliaCtx, expires *time.Time) {
+	ctx.SetStatusCode(fasthttp.StatusForbidden)
+
+	if expires != nil {
+		ctx.Response.Header.Set(fasthttp.HeaderRetryAfter, strconv.Itoa(max(1, int(math.Ceil(expires.Sub(ctx.GetClock().Now()).Seconds())))))
+	}
+
+	ctx.SetJSONError(messageAuthenticationBannedIP)
 }
 
 func respondUnauthorized(ctx *middlewares.AutheliaCtx, message string) {

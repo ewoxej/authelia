@@ -15,6 +15,7 @@ import { Spinner } from "@components/UI/Spinner";
 import { RedirectionURL } from "@constants/SearchParams";
 import { useNotifications } from "@contexts/NotificationsContext";
 import { useFlow } from "@hooks/Flow";
+import { setLoginMark } from "@hooks/LoginMark";
 import { usePasswordVisibility } from "@hooks/PasswordVisibility";
 import { useQueryParam } from "@hooks/QueryParam";
 import { IsCapsLockModified } from "@services/CapsLock";
@@ -59,6 +60,7 @@ const PasswordForm = function (props: Props) {
         }
 
         setLoading(true);
+        setLoginMark("busy");
 
         try {
             const res = await postSecondFactor(password, redirectionURL, flowID, flow, subflow);
@@ -66,6 +68,7 @@ const PasswordForm = function (props: Props) {
         } catch (err) {
             console.error(err);
             createErrorNotification(translate("Incorrect password"));
+            setLoginMark("error");
             setPassword("");
             setLoading(false);
             focusPassword();

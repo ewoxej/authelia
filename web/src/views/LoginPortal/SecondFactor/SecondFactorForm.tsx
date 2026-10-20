@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { ReactNode, lazy } from "react";
+import { ReactNode, lazy, useEffect } from "react";
 
 import { browserSupportsWebAuthn } from "@simplewebauthn/browser";
 import { Fingerprint, KeyRound, Smartphone } from "lucide-react";
@@ -23,6 +23,7 @@ import {
 import { useLocalStorageMethodContext } from "@contexts/LocalStorageMethodContext";
 import { useNotifications } from "@contexts/NotificationsContext";
 import { useFlowPresent } from "@hooks/Flow";
+import { getLoginMark, setLoginMark } from "@hooks/LoginMark";
 import { useRouterNavigate } from "@hooks/RouterNavigate";
 import LoginLayout from "@layouts/LoginLayout";
 import { Configuration } from "@models/Configuration";
@@ -57,6 +58,15 @@ const SecondFactorForm = function (props: Props) {
 
     const location = useLocation();
     const stateWebAuthnSupported = browserSupportsWebAuthn();
+
+    useEffect(() => {
+        if (getLoginMark() !== "joined") setLoginMark("idle");
+    }, []);
+
+    const handleSignInError = (err: Error) => {
+        setLoginMark("error");
+        createErrorNotification(err.message);
+    };
 
     const handleMethodSelected = async (method: SecondFactorMethod) => {
         if (localStorageMethodAvailable) {
@@ -166,7 +176,7 @@ const SecondFactorForm = function (props: Props) {
                             onRegisterClick={() => {
                                 navigate(`${SettingsRoute}${SettingsTwoFactorAuthenticationSubRoute}`);
                             }}
-                            onSignInError={(err) => createErrorNotification(err.message)}
+                            onSignInError={handleSignInError}
                             onSignInSuccess={props.onAuthenticationSuccess}
                         />
                     }
@@ -182,7 +192,7 @@ const SecondFactorForm = function (props: Props) {
                             onRegisterClick={() => {
                                 navigate(`${SettingsRoute}${SettingsTwoFactorAuthenticationSubRoute}`);
                             }}
-                            onSignInError={(err) => createErrorNotification(err.message)}
+                            onSignInError={handleSignInError}
                             onSignInSuccess={props.onAuthenticationSuccess}
                         />
                     }
@@ -196,7 +206,7 @@ const SecondFactorForm = function (props: Props) {
                             duoSelfEnrollment={props.duoSelfEnrollment}
                             registered={props.userInfo.has_duo}
                             onSelectionClick={props.onMethodChanged}
-                            onSignInError={(err) => createErrorNotification(err.message)}
+                            onSignInError={handleSignInError}
                             onSignInSuccess={props.onAuthenticationSuccess}
                         />
                     }

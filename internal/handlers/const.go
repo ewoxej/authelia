@@ -70,6 +70,7 @@ var (
 const (
 	messageOperationFailed                       = "Operation failed."
 	messageAuthenticationFailed                  = "Authentication failed. Check your credentials."
+	messageAuthenticationBannedIP                = "Sign-in from your network is blocked."
 	messageUnableToOptionsOneTimePassword        = "Unable to retrieve TOTP registration options."            //nolint:gosec
 	messageUnableToRegisterOneTimePassword       = "Unable to set up one-time password."                      //nolint:gosec
 	messageUnableToDeleteRegisterOneTimePassword = "Unable to delete one-time password registration session." //nolint:gosec

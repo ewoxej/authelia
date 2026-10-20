@@ -5,7 +5,7 @@
 import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { BroadcastChannel } from "broadcast-channel";
-import { Eye, EyeOff } from "lucide-react";
+import { Clock, Eye, EyeOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
@@ -16,12 +16,13 @@ import { ResetPasswordStep1Route } from "@constants/Routes";
 import { RedirectionURL, RequestMethod } from "@constants/SearchParams";
 import { useNotifications } from "@contexts/NotificationsContext";
 import { useFlow } from "@hooks/Flow";
+import { getLoginMark, setLoginMark } from "@hooks/LoginMark";
 import { useUserCode } from "@hooks/OpenIDConnect";
 import { usePasswordVisibility } from "@hooks/PasswordVisibility";
 import { useQueryParam } from "@hooks/QueryParam";
 import LoginLayout from "@layouts/LoginLayout";
 import { IsCapsLockModified } from "@services/CapsLock";
-import { postFirstFactor } from "@services/Password";
+import { SignInBan, postFirstFactor, signInBan } from "@services/Password";
 import PasskeyForm from "@views/LoginPortal/FirstFactor/PasskeyForm";
 
 export interface Props {
@@ -59,6 +60,8 @@ const FirstFactorForm = function (props: Props) {
     const [passwordCapsLockPartial, setPasswordCapsLockPartial] = useState(false);
     const [passwordError, setPasswordError] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [ban, setBan] = useState<SignInBan>();
+    const [now, setNow] = useState(() => Date.now());
 
     const usernameRef = useRef<HTMLInputElement | null>(null);
     const passwordRef = useRef<HTMLInputElement | null>(null);
@@ -81,6 +84,28 @@ const FirstFactorForm = function (props: Props) {
     }, [focusUsername]);
 
     useEffect(() => {
+        setLoginMark("idle");
+    }, []);
+
+    // Counts down a ban which expires and lets the user try again once it did.
+    useEffect(() => {
+        if (ban?.until === undefined) return;
+
+        const timer = setInterval(() => {
+            const current = Date.now();
+
+            setNow(current);
+
+            if (current >= (ban.until ?? 0)) {
+                setBan(undefined);
+                setLoginMark("idle");
+            }
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [ban]);
+
+    useEffect(() => {
         const handleMessage = (authenticated: boolean) => {
             if (authenticated) {
                 props.onChannelStateChange();
@@ -94,7 +119,8 @@ const FirstFactorForm = function (props: Props) {
         };
     }, [loginChannel, redirectionURL, props]);
 
-    const disabled = props.disabled;
+    const banned = ban !== undefined;
+    const disabled = props.disabled || banned;
 
     const handleRememberMeChange = () => {
         setRememberMe(!rememberMe);
@@ -117,6 +143,7 @@ const FirstFactorForm = function (props: Props) {
         }
 
         setLoading(true);
+        setLoginMark("busy");
 
         props.onAuthenticationStart();
 
@@ -139,7 +166,18 @@ const FirstFactorForm = function (props: Props) {
             props.onAuthenticationSuccess(res ? res.redirect : undefined);
         } catch (err) {
             console.error(err);
-            createErrorNotification(translate("Incorrect username or password"));
+
+            const refused = signInBan(err);
+
+            if (refused) {
+                setBan(refused);
+                setNow(Date.now());
+                setLoginMark("ban");
+            } else {
+                createErrorNotification(translate("Incorrect username or password"));
+                setLoginMark("error");
+            }
+
             setLoading(false);
             props.onAuthenticationStop();
             setPassword("");
@@ -270,6 +308,18 @@ const FirstFactorForm = function (props: Props) {
             }
         >
             <form id={"form-login"} className="l-form" onSubmit={(e) => e.preventDefault()}>
+                {banned ? (
+                    <div id="ban-alert" className="l-alert warn" role="alert">
+                        <Clock size={16} strokeWidth={1.8} aria-hidden />
+                        <span>
+                            {ban.until === undefined
+                                ? translate("Sign-in from your network is blocked")
+                                : translate("Sign-in from your network is blocked, try again in {{time}}", {
+                                      time: formatRemaining(ban.until - now),
+                                  })}
+                        </span>
+                    </div>
+                ) : null}
                 <div className="l-fld">
                     <label htmlFor="username-textfield">{translate("Username")}</label>
                     <input
@@ -311,7 +361,11 @@ const FirstFactorForm = function (props: Props) {
                             disabled={disabled}
                             value={password}
                             aria-invalid={passwordError}
-                            onChange={(v) => setPassword(v.target.value)}
+                            onChange={(v) => {
+                                setPassword(v.target.value);
+
+                                if (getLoginMark() === "error") setLoginMark("idle");
+                            }}
                             onFocus={() => setPasswordError(false)}
                             type={showPassword ? "text" : "password"}
                             autoComplete="current-password"
@@ -393,6 +447,16 @@ const FirstFactorForm = function (props: Props) {
             </form>
         </LoginLayout>
     );
+};
+
+// The time left of a ban as minutes and seconds, i.e. 4:59, or hours and minutes for a long one, i.e. 2:05:00.
+export const formatRemaining = (ms: number) => {
+    const total = Math.max(0, Math.ceil(ms / 1000));
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = String(total % 60).padStart(2, "0");
+
+    return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${seconds}` : `${minutes}:${seconds}`;
 };
 
 export default FirstFactorForm;

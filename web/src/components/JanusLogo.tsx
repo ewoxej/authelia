@@ -14,6 +14,8 @@ export interface Props extends Omit<SVGProps<SVGSVGElement>, "fill" | "mask"> {
     size?: number;
     tone?: JanusLogoTone;
     title?: string;
+    // Shows the keyhole whole, its halves joined, i.e. for a signed in user.
+    joined?: boolean;
 }
 
 const fills: Record<JanusLogoTone, string> = {
@@ -39,9 +41,13 @@ const geometry = (size: number): Geometry => {
 };
 
 /** The Janus logo: a coin with a keyhole split in two halves looking in opposite directions. */
-const JanusLogo = function ({ size = 32, title, tone = "accent", ...props }: Props) {
+const JanusLogo = function ({ joined = false, size = 32, title, tone = "accent", ...props }: Props) {
     const id = `janus-${useId().replaceAll(":", "")}`;
-    const { dx, dy, rings, scale } = geometry(size);
+    const { rings, scale, ...offset } = geometry(size);
+    const dx = joined ? 0 : offset.dx;
+    const dy = joined ? 0 : offset.dy;
+    // Joined halves overlap a little so no seam shows between them.
+    const [left, right] = joined ? [50.4, 49.6] : [50, 50];
 
     return (
         <svg
@@ -62,11 +68,11 @@ const JanusLogo = function ({ size = 32, title, tone = "accent", ...props }: Pro
                     <g transform={`translate(50 50) scale(${scale}) translate(-50 -50)`}>
                         <path
                             transform={`translate(${-dx} ${-dy})`}
-                            d="M50,28 A12,12 0 0,0 38,40 A12,12 0 0,0 43.5,50 L40,72 L50,72 Z"
+                            d={`M50,28 A12,12 0 0,0 38,40 A12,12 0 0,0 43.5,50 L40,72 L${left},72 L${left},28 Z`}
                         />
                         <path
                             transform={`translate(${dx} ${dy})`}
-                            d="M50,28 A12,12 0 0,1 62,40 A12,12 0 0,1 56.5,50 L60,72 L50,72 Z"
+                            d={`M50,28 A12,12 0 0,1 62,40 A12,12 0 0,1 56.5,50 L60,72 L${right},72 L${right},28 Z`}
                         />
                     </g>
                     {rings === "single" ? (

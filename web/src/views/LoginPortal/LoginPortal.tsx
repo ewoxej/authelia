@@ -22,6 +22,7 @@ import { useLocalStorageMethodContext } from "@contexts/LocalStorageMethodContex
 import { useNotifications } from "@contexts/NotificationsContext";
 import { useConfiguration } from "@hooks/Configuration";
 import { useFlowPresent } from "@hooks/Flow";
+import { getLoginMark, joinLoginMark, setLoginMark, setSignedIn } from "@hooks/LoginMark";
 import { useQueryParam } from "@hooks/QueryParam";
 import { useRedirector } from "@hooks/Redirector";
 import { useRouterNavigate } from "@hooks/RouterNavigate";
@@ -112,6 +113,7 @@ const LoginPortal = function (props: Props) {
         try {
             const res = await checkSafeRedirection(redirectionURL);
             if (res?.ok) {
+                await joinLoginMark();
                 redirector(redirectionURL);
             } else {
                 createErrorNotification(translate(RedirectionErrorMessage));
@@ -125,6 +127,7 @@ const LoginPortal = function (props: Props) {
 
     const handleAuthenticationNavigation = useCallback(() => {
         if (state!.authentication_level === AuthenticationLevel.Unauthenticated) {
+            setSignedIn(false);
             setFirstFactorDisabled(false);
             navigate(IndexRoute);
         } else if (state!.authentication_level >= AuthenticationLevel.OneFactor && userInfo && configuration) {
@@ -134,10 +137,13 @@ const LoginPortal = function (props: Props) {
 
             if (authenticated && !flowPresent) {
                 // Signed in without anywhere to go back to: the account settings are the useful place to land.
-                navigate(SettingsRoute, false);
+                joinLoginMark().then(() => navigate(SettingsRoute, false));
             } else if (configuration.available_methods.size === 0) {
-                navigate(AuthenticatedRoute, false);
+                joinLoginMark().then(() => navigate(AuthenticatedRoute, false));
             } else {
+                // The first factor was accepted but the second is still to come.
+                if (getLoginMark() === "busy") setLoginMark("idle");
+
                 const method = localStorageMethod || userInfo.method;
 
                 if (!state!.factor_knowledge) {
@@ -189,6 +195,7 @@ const LoginPortal = function (props: Props) {
 
     const handleAuthSuccess = async (redirectionURL: string | undefined) => {
         if (redirectionURL) {
+            await joinLoginMark();
             redirector(redirectionURL);
         } else {
             fetchState();

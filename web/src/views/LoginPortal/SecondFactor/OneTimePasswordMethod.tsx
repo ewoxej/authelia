@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 
 import { RedirectionURL } from "@constants/SearchParams";
 import { useFlow } from "@hooks/Flow";
+import { setLoginMark } from "@hooks/LoginMark";
 import { useUserCode } from "@hooks/OpenIDConnect";
 import { useQueryParam } from "@hooks/QueryParam";
 import { useUserInfoTOTPConfiguration } from "@hooks/UserInfoTOTPConfiguration";
@@ -118,6 +119,7 @@ const OneTimePasswordMethod = function (props: Props) {
 
             try {
                 dispatch({ type: State.InProgress });
+                setLoginMark("busy");
                 const res = await completeTOTPSignIn(passcodeStr, redirectionURL, flowID, flow, subflow, userCode);
 
                 if (!res) {

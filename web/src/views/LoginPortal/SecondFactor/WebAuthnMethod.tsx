@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { RedirectionURL } from "@constants/SearchParams";
 import { useAbortSignal } from "@hooks/Abort";
 import { useFlow } from "@hooks/Flow";
+import { setLoginMark } from "@hooks/LoginMark";
 import { useUserCode } from "@hooks/OpenIDConnect";
 import { useQueryParam } from "@hooks/QueryParam";
 import { AssertionResult, AssertionResultFailureString, WebAuthnTouchState } from "@models/WebAuthn";
@@ -81,6 +82,7 @@ const WebAuthnMethod = function (props: Props) {
             }
 
             dispatch({ type: WebAuthnTouchState.InProgress });
+            setLoginMark("busy");
 
             const response = await postWebAuthnResponse(
                 result.response,

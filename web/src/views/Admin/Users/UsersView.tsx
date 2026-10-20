@@ -12,7 +12,6 @@ import { useNotifications } from "@contexts/NotificationsContext";
 import { useRouterNavigate } from "@hooks/RouterNavigate";
 import { AdminUserListItem, getAdminUsers } from "@services/Admin";
 import { useAdmin, useAdminErrorHandler } from "@views/Admin/Common/AdminContext";
-import { downloadCSV } from "@views/Admin/Common/CSV";
 import { formatRelative, formatShort } from "@views/Admin/Common/Format";
 import { Avatar, Badge, Btn, Card, IconBtn, Note, PageHeader, SearchBox, Seg, Spinner } from "@views/Admin/Common/ui";
 import UserEditDialog from "@views/Admin/Users/UserEditDialog";
@@ -108,23 +107,6 @@ const UsersView = function () {
     const current = Math.min(page, pages - 1);
     const visible = filtered.slice(current * rowsPerPage, (current + 1) * rowsPerPage);
 
-    const handleExport = () => {
-        const rows = [
-            ["username", "display_name", "email", "groups", "status", "second_factor", "last_sign_in"],
-            ...filtered.map((u) => [
-                u.username,
-                u.display_name,
-                u.email,
-                u.groups.join(" "),
-                statusOf(u),
-                u.second_factor.method,
-                u.last_sign_in ?? "",
-            ]),
-        ];
-
-        downloadCSV("authelia-users.csv", rows);
-    };
-
     const handleLookup = (e: FormEvent) => {
         e.preventDefault();
 
@@ -188,9 +170,6 @@ const UsersView = function () {
                 }
                 actions={
                     <>
-                        <Btn disabled={!filtered.length} onClick={handleExport}>
-                            {translate("Export")}
-                        </Btn>
                         <Btn id="admin-user-create" variant="primary" onClick={() => setCreateOpen(true)}>
                             {translate("Add user")}
                         </Btn>

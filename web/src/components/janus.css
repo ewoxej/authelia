@@ -32,3 +32,31 @@
     clip: rect(0 0 0 0);
     white-space: nowrap;
 }
+
+/* The loading coin spins around its horizontal axis. */
+.janus-coin {
+    display: inline-flex;
+    justify-content: center;
+    color: var(--custom-loading-bar, #4d8ef7);
+    perspective: 400px;
+}
+
+.janus-coin .janus-logo {
+    animation: janus-coin-spin 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes janus-coin-spin {
+    from {
+        transform: rotateX(0deg);
+    }
+
+    to {
+        transform: rotateX(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .janus-coin .janus-logo {
+        animation-duration: 4s;
+    }
+}

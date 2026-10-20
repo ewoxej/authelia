@@ -11,6 +11,7 @@ import { useSearchParams } from "react-router";
 import { IndexRoute } from "@constants/Routes";
 import { RedirectionRestoreURL, RedirectionURL } from "@constants/SearchParams";
 import { useNotifications } from "@contexts/NotificationsContext";
+import { setLoginMark, setSignedIn } from "@hooks/LoginMark";
 import { useQueryParam } from "@hooks/QueryParam";
 import { useRedirector } from "@hooks/Redirector";
 import { useRouterNavigate } from "@hooks/RouterNavigate";
@@ -52,6 +53,16 @@ const SignOut = function () {
             }
         }
     }, [redirectionURL, safeRedirect, query, redirector, navigate]);
+
+    // The halves part as the session closes.
+    useEffect(() => {
+        setSignedIn(false);
+        setLoginMark("joined");
+
+        const timeout = setTimeout(() => setLoginMark("unlock"), 120);
+
+        return () => clearTimeout(timeout);
+    }, []);
 
     useEffect(() => {
         const controller = new AbortController();

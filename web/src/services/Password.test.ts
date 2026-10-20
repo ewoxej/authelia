@@ -2,8 +2,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+import { AxiosError, AxiosHeaders } from "axios";
+
 import { PostWithOptionalResponse } from "@services/Client";
-import { postFirstFactor, postFirstFactorReauthenticate, postSecondFactor } from "@services/Password";
+import { postFirstFactor, postFirstFactorReauthenticate, postSecondFactor, signInBan } from "@services/Password";
 
 vi.mock("@services/Api", () => ({
     CompletePasswordSignInPath: "/password/signin",
@@ -78,4 +80,26 @@ it("posts second factor without response", async () => {
     (PostWithOptionalResponse as any).mockResolvedValue(undefined);
     const result = await postSecondFactor("pass");
     expect(result).toEqual({});
+});
+
+const refused = (status: number, headers: Record<string, string> = {}) =>
+    new AxiosError("refused", "ERR_BAD_REQUEST", undefined, undefined, {
+        config: { headers: new AxiosHeaders() },
+        data: {},
+        headers,
+        status,
+        statusText: "refused",
+    });
+
+it("tells a ban of the network with when it expires", () => {
+    expect(signInBan(refused(403, { "retry-after": "90" }), 1000)).toEqual({ until: 91_000 });
+});
+
+it("tells a ban of the network which doesn't expire", () => {
+    expect(signInBan(refused(403))).toEqual({});
+});
+
+it("doesn't take other failures for a ban", () => {
+    expect(signInBan(refused(401))).toBeUndefined();
+    expect(signInBan(new Error("network"))).toBeUndefined();
 });

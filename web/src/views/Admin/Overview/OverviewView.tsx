@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { MouseEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -23,7 +23,7 @@ import { useAdmin, useAdminErrorHandler } from "@views/Admin/Common/AdminContext
 import ConfirmDialog from "@views/Admin/Common/ConfirmDialog";
 import { formatNumber } from "@views/Admin/Common/Format";
 import { waitForRestart } from "@views/Admin/Common/Restart";
-import { Badge, BadgeTone, Btn, Card, CardHeader, Dot, Note, PageHeader, Seg, Stat } from "@views/Admin/Common/ui";
+import { Badge, BadgeTone, Btn, Card, CardHeader, PageHeader, Seg, Stat } from "@views/Admin/Common/ui";
 
 const componentTone: Record<string, BadgeTone> = { neutral: "neutral", ok: "accent", warn: "planned" };
 
@@ -77,7 +77,6 @@ const OverviewView = function () {
     const host = globalThis.location?.host || overview.host;
     const rangeLabel = translate(rangeLabels[range]);
     const locale = i18n.language;
-    const average = stats && stats.buckets.length ? (stats.total / stats.buckets.length).toFixed(1) : "—";
 
     return (
         <section className="wrap">
@@ -127,15 +126,6 @@ const OverviewView = function () {
                 }
             />
 
-            {overview.configuration_filters && overview.configuration_filters.length !== 0 ? (
-                <Note tone="info">
-                    {translate(
-                        "The configuration files are processed by filters ({{filters}}). Template expressions are shown as text in the forms and are saved exactly as written.",
-                        { filters: overview.configuration_filters.join(", ") },
-                    )}
-                </Note>
-            ) : null}
-
             <div className="stats">
                 <Stat
                     onCard
@@ -181,55 +171,6 @@ const OverviewView = function () {
             </div>
 
             <div className="ov-grid">
-                <Card className="wide">
-                    <CardHeader
-                        title={translate("Sign-ins")}
-                        period={`${rangeLabel} · ${translate(range === "24h" ? "hourly" : "daily")}`}
-                        style={{ alignItems: "flex-start", marginBottom: 18 }}
-                        actions={
-                            <div className="legend">
-                                <span>
-                                    <Dot color="var(--a-accent)" />
-                                    {translate("successful")}
-                                </span>
-                                <span>
-                                    <Dot color="var(--a-out)" />
-                                    {translate("failed")}
-                                </span>
-                            </div>
-                        }
-                    />
-                    <Chart stats={stats} locale={locale} />
-                    <div
-                        className="stats"
-                        style={{ gap: 12, gridTemplateColumns: "repeat(3, minmax(0, 1fr))", marginTop: 18 }}
-                    >
-                        <Stat
-                            label={translate("Total")}
-                            size="sm"
-                            value={stats ? formatNumber(stats.total, locale) : "—"}
-                        />
-                        <Stat
-                            label={translate(range === "24h" ? "Hourly avg" : "Daily avg")}
-                            size="sm"
-                            value={average}
-                        />
-                        <Stat
-                            label={translate("2FA share")}
-                            size="sm"
-                            value={
-                                stats ? (
-                                    <>
-                                        {stats.second_factor_share}
-                                        <small>%</small>
-                                    </>
-                                ) : (
-                                    "—"
-                                )
-                            }
-                        />
-                    </div>
-                </Card>
                 <Card>
                     <CardHeader title={translate("Components")} period={translate("from the configuration")} />
                     <div>
@@ -246,92 +187,29 @@ const OverviewView = function () {
                         ))}
                     </div>
                 </Card>
+                {overview.storage_supported ? (
+                    <Card flush className="wide">
+                        <CardHeader
+                            title={translate("Recent activity")}
+                            period={translate("last 5 events")}
+                            style={{ marginBottom: 14, padding: "18px 20px 0" }}
+                            actions={
+                                <button
+                                    type="button"
+                                    className="link"
+                                    onClick={() => navigate(`${AdminRoute}${AdminActivitySubRoute}`)}
+                                >
+                                    {translate("All activity")} →
+                                </button>
+                            }
+                        />
+                        <div className="scroll" style={{ paddingBottom: 6 }}>
+                            <LogTable logs={recent} />
+                        </div>
+                    </Card>
+                ) : null}
             </div>
-
-            {overview.storage_supported ? (
-                <Card flush>
-                    <CardHeader
-                        title={translate("Recent activity")}
-                        period={translate("last 5 events")}
-                        style={{ marginBottom: 14, padding: "18px 20px 0" }}
-                        actions={
-                            <button
-                                type="button"
-                                className="link"
-                                onClick={() => navigate(`${AdminRoute}${AdminActivitySubRoute}`)}
-                            >
-                                {translate("All activity")} →
-                            </button>
-                        }
-                    />
-                    <div className="scroll" style={{ paddingBottom: 6 }}>
-                        <LogTable logs={recent} />
-                    </div>
-                </Card>
-            ) : null}
         </section>
-    );
-};
-
-const Chart = function (props: { stats?: AdminStats; locale: string }) {
-    const { t: translate } = useTranslation("admin");
-    const [tip, setTip] = useState<{ x: number; y: number; index: number } | null>(null);
-
-    const buckets = props.stats?.buckets ?? [];
-    const hourly = props.stats?.range === "24h";
-    const max = Math.max(1, ...buckets.map((b) => b.successful + b.failed));
-    const every = Math.max(1, Math.ceil(buckets.length / 8));
-
-    const label = (start: string) => {
-        const date = new Date(start);
-
-        return hourly
-            ? date.toLocaleTimeString(props.locale, { hour: "2-digit", hour12: false })
-            : date.toLocaleDateString(props.locale, { day: "2-digit", month: "short" });
-    };
-
-    const handleMove = (e: MouseEvent<HTMLDivElement>, index: number) =>
-        setTip({ index, x: e.clientX + 12, y: e.clientY - 56 });
-
-    const active = tip ? buckets[tip.index] : undefined;
-
-    return (
-        <>
-            <div className="chart" onMouseLeave={() => setTip(null)}>
-                {buckets.map((bucket, index) => (
-                    <div
-                        key={bucket.start}
-                        className="bar"
-                        style={{ height: `${((bucket.successful + bucket.failed) / max) * 100}%` }}
-                        onMouseMove={(e) => handleMove(e, index)}
-                    >
-                        {bucket.successful ? <div className="ok" style={{ flex: bucket.successful }} /> : null}
-                        {bucket.failed ? <div className="bad" style={{ flex: bucket.failed }} /> : null}
-                    </div>
-                ))}
-            </div>
-            <div className="chart-x">
-                {buckets.map((bucket, index) => (
-                    <span key={bucket.start}>{index % every === 0 ? label(bucket.start) : ""}</span>
-                ))}
-            </div>
-            {tip && active ? (
-                <div className="adm tip" style={{ left: tip.x, top: tip.y }}>
-                    <span className="p">{label(active.start)}</span>
-                    <span className="v">
-                        {translate("{{count}} ok", { count: active.successful })}
-                        {active.failed ? (
-                            <>
-                                {" · "}
-                                <span style={{ color: "var(--a-out)" }}>
-                                    {translate("{{count}} failed", { count: active.failed })}
-                                </span>
-                            </>
-                        ) : null}
-                    </span>
-                </div>
-            ) : null}
-        </>
     );
 };
 

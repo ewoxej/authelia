@@ -18,6 +18,7 @@ import {
     SettingsTwoFactorAuthenticationSubRoute,
 } from "@constants/Routes";
 import { useConfiguration } from "@hooks/Configuration";
+import { setSignedIn } from "@hooks/LoginMark";
 import { useRouterNavigate } from "@hooks/RouterNavigate";
 import { useSignOut } from "@hooks/SignOut";
 import { Key, PageHeader, useAdminTheme } from "@views/Admin/Common/ui";
@@ -69,6 +70,10 @@ const SettingsLayout = function (props: Props) {
     useEffect(() => {
         fetchConfiguration();
     }, [fetchConfiguration]);
+
+    useEffect(() => {
+        setSignedIn(true);
+    }, []);
 
     // Lets the shared components, dialogs included, use the colours of the administration area.
     useEffect(() => {

@@ -12,9 +12,8 @@ import "@fontsource/ibm-plex-sans/600.css";
 import "@fontsource/ibm-plex-sans/700.css";
 
 import Brand from "@components/Brand";
-import JanusLogo from "@components/JanusLogo";
-import JanusWordmark from "@components/JanusWordmark";
 import PrivacyPolicyDrawer from "@components/PrivacyPolicyDrawer";
+import LoginMark from "@layouts/LoginMark";
 import { getLogoOverride } from "@utils/Configuration";
 import "@layouts/login.css";
 
@@ -41,7 +40,7 @@ export interface Props {
     children?: ReactNode;
 }
 
-/** The card every sign-in page is shown in: the brand, a title and the content, centred on the page. */
+/** The card every sign-in page is shown in: the logo, a title and the content, centred on the page. */
 const LoginShell = function (props: Props) {
     const width = props.maxWidth === false ? undefined : (cardWidths[props.maxWidth ?? "xs"] ?? cardWidths.xs);
 
@@ -50,19 +49,13 @@ const LoginShell = function (props: Props) {
             {props.top ? <div className="l-top">{props.top}</div> : null}
             <main className="l-stage">
                 <div id={props.id} className="l-card" style={{ maxWidth: width ?? "none" }}>
-                    <div className="l-brand">
-                        <span className="l-mark">
-                            {getLogoOverride() ? (
-                                <img src="./static/media/logo.png" alt="Logo" />
-                            ) : (
-                                <JanusLogo data-testid="brand-mark" size={32} />
-                            )}
-                        </span>
-                        <b>
-                            <JanusWordmark />
-                        </b>
-                        <span className="l-host">{globalThis.location?.host}</span>
-                    </div>
+                    {getLogoOverride() ? (
+                        <div className="l-logo custom">
+                            <img src="./static/media/logo.png" alt="Logo" />
+                        </div>
+                    ) : (
+                        <LoginMark />
+                    )}
                     {props.lead}
                     {props.title || props.subtitle ? (
                         <div className="l-head">

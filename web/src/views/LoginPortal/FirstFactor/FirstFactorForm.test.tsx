@@ -3,9 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { AxiosError, AxiosHeaders } from "axios";
 
+import { getLoginMark, resetLoginMark } from "@hooks/LoginMark";
 import { postFirstFactor } from "@services/Password";
-import FirstFactorForm from "@views/LoginPortal/FirstFactor/FirstFactorForm";
+import FirstFactorForm, { formatRemaining } from "@views/LoginPortal/FirstFactor/FirstFactorForm";
 
 const mocks = vi.hoisted(() => ({
     capsLockModified: null as boolean | null,
@@ -65,7 +67,8 @@ vi.mock("@services/CapsLock", () => ({
     IsCapsLockModified: () => mocks.capsLockModified,
 }));
 
-vi.mock("@services/Password", () => ({
+vi.mock("@services/Password", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@services/Password")>()),
     postFirstFactor: vi.fn(),
 }));
 
@@ -331,6 +334,55 @@ describe("sign in", () => {
         expect(props.onAuthenticationSuccess).not.toHaveBeenCalled();
         await waitFor(() => expect(getPassword()).toHaveValue(""));
         expect(getPassword()).toHaveFocus();
+
+        consoleError.mockRestore();
+    });
+
+    it("turns the logo red on failure", async () => {
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        resetLoginMark();
+        postFirstFactorMock.mockRejectedValue(new Error("bad credentials"));
+
+        renderForm();
+
+        fillCredentials();
+        fireEvent.click(screen.getByRole("button", { name: /Sign in/ }));
+
+        await waitFor(() => expect(getLoginMark()).toBe("error"));
+
+        fireEvent.change(getPassword(), { target: { value: "again" } });
+
+        expect(getLoginMark()).toBe("idle");
+
+        consoleError.mockRestore();
+    });
+
+    it("shows a ban of the network with the time left and blocks the form", async () => {
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        resetLoginMark();
+        postFirstFactorMock.mockRejectedValue(
+            new AxiosError("Forbidden", "ERR_BAD_REQUEST", undefined, undefined, {
+                config: { headers: new AxiosHeaders() },
+                data: {},
+                headers: { "retry-after": "125" },
+                status: 403,
+                statusText: "Forbidden",
+            }),
+        );
+
+        renderForm();
+
+        fillCredentials();
+        fireEvent.click(screen.getByRole("button", { name: /Sign in/ }));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+            "Sign-in from your network is blocked, try again in {{time}}",
+        );
+        expect(getLoginMark()).toBe("ban");
+        expect(mocks.createErrorNotification).not.toHaveBeenCalled();
+        expect(getUsername()).toBeDisabled();
+        expect(getPassword()).toBeDisabled();
+        expect(screen.getByRole("button", { name: /Sign in/ })).toBeDisabled();
 
         consoleError.mockRestore();
     });
@@ -698,5 +750,14 @@ describe("passkey integration", () => {
         renderForm({ passkeyLogin: true, rememberMe: true });
 
         expect(screen.getByTestId("passkey-form")).toHaveAttribute("data-remember-me", "true");
+    });
+});
+
+describe("formatRemaining", () => {
+    it("formats the time left of a ban", () => {
+        expect(formatRemaining(299_000)).toBe("4:59");
+        expect(formatRemaining(1)).toBe("0:01");
+        expect(formatRemaining(-5)).toBe("0:00");
+        expect(formatRemaining(7_500_000)).toBe("2:05:00");
     });
 });

@@ -172,7 +172,7 @@ func (s *FirstFactorSuite) TestShouldCheckAuthenticationIsMarkedWhenInvalidCrede
 
 	s.mock.StorageMock.
 		EXPECT().
-		LoadBannedIP(gomock.Eq(s.mock.Ctx), gomock.Eq(model.NewIP(s.mock.Ctx.RemoteIP()))).Return(nil, nil)
+		LoadBannedIP(gomock.Eq(s.mock.Ctx), gomock.Eq(model.NewIP(s.mock.Ctx.RemoteIP()))).Return(nil, nil).Times(2)
 
 	s.mock.StorageMock.
 		EXPECT().
@@ -185,6 +185,8 @@ func (s *FirstFactorSuite) TestShouldCheckAuthenticationIsMarkedWhenInvalidCrede
 	}`)
 
 	FirstFactorPasswordPOST(nil)(s.mock.Ctx)
+
+	s.mock.Assert401KO(s.T(), "Authentication failed. Check your credentials.")
 }
 
 func (s *FirstFactorSuite) TestShouldFailIfUserProviderGetDetailsFail() {
@@ -202,6 +204,9 @@ func (s *FirstFactorSuite) TestShouldFailIfUserProviderGetDetailsFail() {
 			EXPECT().
 			AppendAuthenticationLog(s.mock.Ctx, gomock.Eq(attempt)).
 			Return(nil),
+		s.mock.StorageMock.
+			EXPECT().
+			LoadBannedIP(gomock.Eq(s.mock.Ctx), gomock.Eq(model.NewIP(s.mock.Ctx.RemoteIP()))).Return(nil, nil),
 	)
 
 	s.mock.Ctx.Request.SetBodyString(`{
@@ -231,6 +236,9 @@ func (s *FirstFactorSuite) TestShouldFailIfUserProviderGetDetailsFailAndGetIPFai
 			EXPECT().
 			AppendAuthenticationLog(s.mock.Ctx, gomock.Eq(attempt)).
 			Return(nil),
+		s.mock.StorageMock.
+			EXPECT().
+			LoadBannedIP(gomock.Eq(s.mock.Ctx), gomock.Eq(model.NewIP(s.mock.Ctx.RemoteIP()))).Return(nil, fmt.Errorf("failed")),
 	)
 
 	s.mock.Ctx.Request.SetBodyString(`{
@@ -271,6 +279,9 @@ func (s *FirstFactorSuite) TestShouldFailIfUserProviderGetDetailsFailAndGetIPBan
 			EXPECT().
 			AppendAuthenticationLog(s.mock.Ctx, gomock.Eq(attempt)).
 			Return(nil),
+		s.mock.StorageMock.
+			EXPECT().
+			LoadBannedIP(gomock.Eq(s.mock.Ctx), gomock.Eq(model.NewIP(s.mock.Ctx.RemoteIP()))).Return([]model.BannedIP{{ID: 1, IP: model.IP{IP: s.mock.Ctx.RemoteIP()}, Source: "regulation"}}, nil),
 	)
 
 	s.mock.Ctx.Request.SetBodyString(`{
@@ -282,7 +293,8 @@ func (s *FirstFactorSuite) TestShouldFailIfUserProviderGetDetailsFailAndGetIPBan
 	FirstFactorPasswordPOST(nil)(s.mock.Ctx)
 
 	s.mock.AssertLastLogMessage(s.T(), "Error occurred getting details for user with username input 'test' which usually indicates they do not exist", "failed")
-	s.mock.Assert401KO(s.T(), "Authentication failed. Check your credentials.")
+	s.mock.Assert403KO(s.T(), "Sign-in from your network is blocked.")
+	s.Empty(s.mock.Ctx.Response.Header.Peek(fasthttp.HeaderRetryAfter))
 }
 
 func (s *FirstFactorSuite) TestShouldNotFailIfAuthenticationMarkFail() {
@@ -1376,6 +1388,12 @@ func (s *FirstFactorReauthenticateSuite) TestShouldCheckBannedUser() {
 func (s *FirstFactorReauthenticateSuite) TestShouldCheckAuthenticationIsMarkedWhenInvalidCredentials() {
 	s.ExpectNoBans()
 
+	// The response checks whether the failed attempt got the IP banned.
+	s.mock.StorageMock.
+		EXPECT().
+		LoadBannedIP(gomock.Eq(s.mock.Ctx), gomock.Eq(model.NewIP(s.mock.Ctx.RemoteIP()))).
+		Return(nil, nil)
+
 	s.mock.UserProviderMock.
 		EXPECT().
 		CheckUserPassword(gomock.Eq(testValue), gomock.Eq("hello")).
@@ -1397,6 +1415,8 @@ func (s *FirstFactorReauthenticateSuite) TestShouldCheckAuthenticationIsMarkedWh
 	}`)
 
 	FirstFactorReauthenticatePOST(nil)(s.mock.Ctx)
+
+	s.mock.Assert401KO(s.T(), "Authentication failed. Check your credentials.")
 }
 
 func (s *FirstFactorReauthenticateSuite) TestShouldFailIfUserProviderGetDetailsFail() {
@@ -1689,7 +1709,78 @@ func (s *FirstFactorSuite) TestShouldFailIfUserIsBanned() {
 
 	FirstFactorPasswordPOST(nil)(s.mock.Ctx)
 
+	s.mock.Assert403KO(s.T(), "Sign-in from your network is blocked.")
+}
+
+func (s *FirstFactorSuite) TestShouldNotRevealUserBan() {
+	gomock.InOrder(
+		s.mock.UserProviderMock.
+			EXPECT().
+			GetDetails(gomock.Eq(testValue)).
+			Return(&authentication.UserDetails{Username: testValue}, nil),
+		s.mock.StorageMock.
+			EXPECT().
+			LoadBannedIP(gomock.Eq(s.mock.Ctx), gomock.Eq(model.NewIP(s.mock.Ctx.RemoteIP()))).
+			Return(nil, nil),
+		s.mock.StorageMock.
+			EXPECT().
+			LoadBannedUser(gomock.Eq(s.mock.Ctx), gomock.Eq(testValue)).
+			Return([]model.BannedUser{{ID: 1, Username: testValue, Source: "regulation"}}, nil),
+		s.mock.StorageMock.
+			EXPECT().
+			AppendAuthenticationLog(s.mock.Ctx, gomock.Any()).
+			Return(nil),
+	)
+
+	s.mock.Ctx.Request.SetBodyString(`{
+		"username": "test",
+		"password": "hello"
+	}`)
+
+	FirstFactorPasswordPOST(nil)(s.mock.Ctx)
+
 	s.mock.Assert401KO(s.T(), "Authentication failed. Check your credentials.")
+}
+
+func (s *FirstFactorSuite) TestShouldRevealIPBanCausedByTheAttempt() {
+	expires := s.mock.Clock.Now().Add(5 * time.Minute)
+
+	gomock.InOrder(
+		s.mock.UserProviderMock.
+			EXPECT().
+			GetDetails(gomock.Eq(testValue)).
+			Return(&authentication.UserDetails{Username: testValue}, nil),
+		s.mock.StorageMock.
+			EXPECT().
+			LoadBannedIP(gomock.Eq(s.mock.Ctx), gomock.Eq(model.NewIP(s.mock.Ctx.RemoteIP()))).
+			Return(nil, nil),
+		s.mock.StorageMock.
+			EXPECT().
+			LoadBannedUser(gomock.Eq(s.mock.Ctx), gomock.Eq(testValue)).
+			Return(nil, nil),
+		s.mock.UserProviderMock.
+			EXPECT().
+			CheckUserPassword(gomock.Eq(testValue), gomock.Eq("hello")).
+			Return(false, nil),
+		s.mock.StorageMock.
+			EXPECT().
+			AppendAuthenticationLog(s.mock.Ctx, gomock.Any()).
+			Return(nil),
+		s.mock.StorageMock.
+			EXPECT().
+			LoadBannedIP(gomock.Eq(s.mock.Ctx), gomock.Eq(model.NewIP(s.mock.Ctx.RemoteIP()))).
+			Return([]model.BannedIP{{ID: 1, IP: model.IP{IP: s.mock.Ctx.RemoteIP()}, Source: "regulation", Expires: sql.NullTime{Valid: true, Time: expires}}}, nil),
+	)
+
+	s.mock.Ctx.Request.SetBodyString(`{
+		"username": "test",
+		"password": "hello"
+	}`)
+
+	FirstFactorPasswordPOST(nil)(s.mock.Ctx)
+
+	s.mock.Assert403KO(s.T(), "Sign-in from your network is blocked.")
+	s.NotEmpty(s.mock.Ctx.Response.Header.Peek(fasthttp.HeaderRetryAfter))
 }
 
 func (s *FirstFactorSuite) TestShouldFailIfBanCheckFails() {

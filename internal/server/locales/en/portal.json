@@ -81,6 +81,8 @@
 	"Sign in": "Sign in",
 	"Sign in with a passkey": "Sign in with a passkey",
 	"Sign out": "Sign out",
+	"Sign-in from your network is blocked": "Sign-in from your network is blocked",
+	"Sign-in from your network is blocked, try again in {{time}}": "Sign-in from your network is blocked, try again in {{time}}",
 	"Successfully revoked the One-Time Code": "Successfully revoked the One-Time Code",
 	"Successfully revoked the Token": "Successfully revoked the Token",
 	"Switch User": "Switch User",
