@@ -284,6 +284,10 @@ func handlerMain(config *schema.Configuration, providers middlewares.Providers) 
 		r.PUT("/api/admin/configuration/sections/text", middlewareAdmin(handlers.AdminConfigurationSectionsTextPUT))
 		r.GET("/api/admin/configuration/section/{section}", middlewareAdmin(handlers.AdminConfigurationSectionGET))
 		r.PUT("/api/admin/configuration/sections", middlewareAdmin(handlers.AdminConfigurationSectionsPUT))
+		r.GET("/api/admin/configuration/pending", middlewareAdmin(handlers.AdminConfigurationPendingGET))
+		r.GET("/api/admin/configuration/pending/{id}", middlewareAdmin(handlers.AdminConfigurationPendingChangeGET))
+		r.DELETE("/api/admin/configuration/pending/{id}", middlewareAdmin(handlers.AdminConfigurationPendingChangeDELETE))
+		r.GET("/api/admin/environment", middlewareAdmin(handlers.AdminEnvironmentGET))
 	}
 
 	metricsVRMW := middlewares.NewMetricsAuthzRequest(providers.Metrics)

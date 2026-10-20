@@ -204,18 +204,121 @@ func adminQueryKeys(ctx *middlewares.AutheliaCtx) (keys []string) {
 }
 
 func adminSaveConfiguration(ctx *middlewares.AutheliaCtx, manager *admin.ConfigurationManager, path string, content []byte, action string) {
-	result, err := manager.Save(path, content)
+	var username string
+
+	if userSession, err := ctx.GetSession(); err == nil {
+		username = userSession.Username
+	}
+
+	result, pending, err := manager.Save(path, content, username)
 	if err != nil {
 		adminReplyConfigurationError(ctx, err, "Failed to save the configuration.")
 
 		return
 	}
 
-	if result.Valid {
+	switch {
+	case pending != nil:
+		adminAudit(ctx, action).WithFields(map[string]any{"file": path, "change": pending.ID, "reasons": pending.Reasons}).Warn("Administrator submitted a configuration change which has to be confirmed on the server")
+
+		adminReplyJSON(ctx, adminConfigurationSaveBody{Validation: result, Content: string(content), Pending: newAdminPendingChangeBody(pending)})
+	case result.Valid:
 		adminAudit(ctx, action).WithField("file", path).Warn("Administrator saved the configuration")
+
+		fallthrough
+	default:
+		adminReplyJSON(ctx, adminConfigurationSaveBody{Saved: result.Valid, Validation: result, Content: string(content)})
+	}
+}
+
+// AdminConfigurationPendingGET returns the configuration changes which wait for a confirmation on the server, and the
+// ones decided recently.
+func AdminConfigurationPendingGET(ctx *middlewares.AutheliaCtx) {
+	manager := adminConfigurationManager(ctx)
+	if manager == nil {
+		return
 	}
 
-	adminReplyJSON(ctx, adminConfigurationSaveBody{Saved: result.Valid, Validation: result, Content: string(content)})
+	changes, err := manager.PendingChanges()
+	if err != nil {
+		adminReplyError(ctx, fasthttp.StatusInternalServerError, err, "Failed to list the pending changes.")
+
+		return
+	}
+
+	bodies := make([]*adminPendingChangeBody, 0, len(changes))
+
+	for i := range changes {
+		bodies = append(bodies, newAdminPendingChangeBody(&changes[i]))
+	}
+
+	adminReplyJSON(ctx, bodies)
+}
+
+// AdminConfigurationPendingChangeGET returns a configuration change which waits for a confirmation on the server.
+func AdminConfigurationPendingChangeGET(ctx *middlewares.AutheliaCtx) {
+	manager := adminConfigurationManager(ctx)
+	if manager == nil {
+		return
+	}
+
+	change, err := manager.PendingChange(adminPathValue(ctx, "id"))
+	if err != nil {
+		adminReplyPendingChangeError(ctx, err)
+
+		return
+	}
+
+	adminReplyJSON(ctx, newAdminPendingChangeBody(change))
+}
+
+// AdminConfigurationPendingChangeDELETE withdraws a configuration change which waits for a confirmation on the server.
+func AdminConfigurationPendingChangeDELETE(ctx *middlewares.AutheliaCtx) {
+	manager := adminConfigurationManager(ctx)
+	if manager == nil {
+		return
+	}
+
+	id := adminPathValue(ctx, "id")
+
+	if err := manager.CancelPendingChange(id); err != nil {
+		adminReplyPendingChangeError(ctx, err)
+
+		return
+	}
+
+	adminAudit(ctx, "configuration.pending.cancel").WithField("change", id).Info("Administrator cancelled a pending configuration change")
+
+	ctx.ReplyOK()
+}
+
+// AdminEnvironmentGET returns the names of the environment variables the configuration can reference. The values are
+// never returned.
+func AdminEnvironmentGET(ctx *middlewares.AutheliaCtx) {
+	manager := adminConfigurationManager(ctx)
+	if manager == nil {
+		return
+	}
+
+	variables, err := manager.EnvironmentVariables()
+	if err != nil {
+		adminReplyError(ctx, fasthttp.StatusInternalServerError, err, "Failed to list the environment variables.")
+
+		return
+	}
+
+	adminReplyJSON(ctx, variables)
+}
+
+func adminReplyPendingChangeError(ctx *middlewares.AutheliaCtx, err error) {
+	switch {
+	case errors.Is(err, admin.ErrPendingChangeUnknown):
+		adminReplyError(ctx, fasthttp.StatusNotFound, nil, err.Error())
+	case errors.Is(err, admin.ErrPendingChangeDecided):
+		adminReplyError(ctx, fasthttp.StatusConflict, nil, err.Error())
+	default:
+		adminReplyError(ctx, fasthttp.StatusInternalServerError, err, "Failed to read the pending change.")
+	}
 }
 
 func adminConfigurationManager(ctx *middlewares.AutheliaCtx) *admin.ConfigurationManager {

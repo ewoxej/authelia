@@ -51,6 +51,10 @@ type ConfigurationValidationResult struct {
 	Valid    bool     `json:"valid"`
 	Errors   []string `json:"errors"`
 	Warnings []string `json:"warnings"`
+
+	// Confirmations are the reasons the configuration can only be saved once someone with access to the server confirms
+	// it with 'authelia admin changes'.
+	Confirmations []string `json:"confirmations"`
 }
 
 // ConfigurationManager manages the configuration files which were loaded at startup.
@@ -141,28 +145,37 @@ func (m *ConfigurationManager) Validate(path string, content []byte) (result *Co
 
 	defer m.mutex.Unlock()
 
-	return m.validate(path, content)
+	return m.validate(path, content, true)
 }
 
-// Save validates the content and if it's valid replaces the file at path.
-func (m *ConfigurationManager) Save(path string, content []byte) (result *ConfigurationValidationResult, err error) {
+// Save validates the content and if it's valid replaces the file at path. When the content needs the confirmation of
+// someone with access to the server it's saved as a pending change instead, which is returned.
+func (m *ConfigurationManager) Save(path string, content []byte, username string) (result *ConfigurationValidationResult, pending *PendingChange, err error) {
 	if path, err = m.resolve(path); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	m.mutex.Lock()
 
 	defer m.mutex.Unlock()
 
-	if result, err = m.validate(path, content); err != nil || !result.Valid {
-		return result, err
+	if result, err = m.validate(path, content, true); err != nil || !result.Valid {
+		return result, nil, err
+	}
+
+	if len(result.Confirmations) != 0 {
+		if pending, err = m.submit(path, content, username, result.Confirmations); err != nil {
+			return nil, nil, fmt.Errorf("error saving the change for confirmation: %w", err)
+		}
+
+		return result, pending, nil
 	}
 
 	if err = writeFileAtomic(path, content); err != nil {
-		return nil, fmt.Errorf("error writing the configuration file: %w", err)
+		return nil, nil, fmt.Errorf("error writing the configuration file: %w", err)
 	}
 
-	return result, nil
+	return result, nil, nil
 }
 
 // Section returns the value of a top level key of the configuration file at path. It returns nil if it's not set.
@@ -516,8 +529,11 @@ func (m *ConfigurationManager) resolve(path string) (resolved string, err error)
 	return "", ErrConfigurationFileUnknown
 }
 
-func (m *ConfigurationManager) validate(path string, content []byte) (result *ConfigurationValidationResult, err error) {
-	result = &ConfigurationValidationResult{Errors: []string{}, Warnings: []string{}}
+// validate validates the full configuration as if the file at path had the given content. With confirm the parts which
+// need the confirmation of someone with access to the server are listed and not evaluated, which is how the
+// administration area validates. Without it everything is evaluated, which is how a confirmed change is validated.
+func (m *ConfigurationManager) validate(path string, content []byte, confirm bool) (result *ConfigurationValidationResult, err error) {
+	result = &ConfigurationValidationResult{Errors: []string{}, Warnings: []string{}, Confirmations: []string{}}
 
 	var doc *yaml.Node
 
@@ -531,13 +547,21 @@ func (m *ConfigurationManager) validate(path string, content []byte) (result *Co
 		return result, nil
 	}
 
-	if result.Errors, err = m.policyErrors(content); err != nil {
-		return nil, err
-	} else if len(result.Errors) != 0 {
-		return result, nil
-	}
+	evaluated := content
 
-	result.Errors = []string{}
+	if confirm {
+		var reasons, expressions []string
+
+		if reasons, expressions, err = m.confirmations(content); err != nil {
+			return nil, err
+		}
+
+		result.Confirmations = append(result.Confirmations, reasons...)
+
+		for _, expression := range expressions {
+			evaluated = bytes.ReplaceAll(evaluated, []byte(expression), []byte(pendingStub))
+		}
+	}
 
 	var contents [][]byte
 
@@ -573,7 +597,7 @@ func (m *ConfigurationManager) validate(path string, content []byte) (result *Co
 	}
 
 	files := make([]string, len(paths))
-	contents = append(contents, content)
+	contents = append(contents, evaluated)
 
 	for i, p := range paths {
 		if p != path {
@@ -588,7 +612,7 @@ func (m *ConfigurationManager) validate(path string, content []byte) (result *Co
 
 		files[i] = filepath.Join(dir, fmt.Sprintf("%03d%s", i, filepath.Ext(p)))
 
-		if err = os.WriteFile(files[i], content, 0600); err != nil {
+		if err = os.WriteFile(files[i], evaluated, 0600); err != nil {
 			return nil, err
 		}
 	}
@@ -617,8 +641,8 @@ func (m *ConfigurationManager) validate(path string, content []byte) (result *Co
 
 	validator.ValidateKeys(keys, configuration.GetMultiKeyMappedDeprecationKeys(), configuration.DefaultEnvPrefix, val)
 
-	if e := m.fileRootsError(config.Administration.FileRoots); e != "" {
-		result.Errors = append(result.Errors, e)
+	if change := m.fileRootsChange(config.Administration.FileRoots); confirm && change != "" {
+		result.Confirmations = append(result.Confirmations, change)
 	}
 
 	tc := &tls.Config{
@@ -667,6 +691,12 @@ func writeFileAtomic(path string, content []byte) (err error) {
 	}
 
 	if err = f.Chmod(info.Mode().Perm()); err != nil {
+		_ = f.Close()
+
+		return err
+	}
+
+	if err = keepOwner(f, info); err != nil {
 		_ = f.Close()
 
 		return err

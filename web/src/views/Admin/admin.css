@@ -1240,6 +1240,187 @@ html[data-admin-theme] body {
     font-family: var(--a-font-sans);
 }
 
+.adm .env-input-wrap {
+    position: relative;
+    min-width: 0;
+}
+
+.adm .tag-input .env-input-wrap {
+    flex: 1;
+    min-width: 120px;
+}
+
+/* A block, not a flex container: browsers can't put the caret next to a token in the anonymous flex items. */
+.adm .env-input {
+    display: block;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    white-space: pre;
+    cursor: text;
+}
+
+.adm .env-input::-webkit-scrollbar {
+    display: none;
+}
+
+.adm .env-input.inp {
+    line-height: 38px;
+}
+
+.adm .env-input.tag-draft {
+    line-height: 26px;
+}
+
+.adm .env-input.inp:focus-within {
+    box-shadow:
+        inset 0 0 0 1px var(--a-accent),
+        0 0 0 3px var(--a-accent-18) !important;
+}
+
+.adm .env-input.tag-draft {
+    height: 26px;
+    padding: 0 6px;
+    outline: 0;
+    color: var(--a-tx);
+    font: 12.5px var(--a-font-mono);
+}
+
+.adm .env-input.disabled {
+    cursor: not-allowed;
+}
+
+.adm .env-input.is-empty::before {
+    content: attr(data-placeholder);
+    color: var(--a-tx3);
+    pointer-events: none;
+}
+
+.adm .env-input.tag-draft.is-empty::before {
+    font-family: var(--a-font-sans);
+}
+
+.adm .env-token {
+    display: inline-block;
+    height: 20px;
+    margin: 0 1px;
+    vertical-align: 1px;
+    padding: 0 6px;
+    border-radius: 5px;
+    background: var(--a-accent-12);
+    box-shadow: inset 0 0 0 1px var(--a-accent-30);
+    color: var(--a-accent-tx);
+    font: 12px var(--a-font-mono);
+    line-height: 20px;
+    white-space: nowrap;
+    cursor: default;
+    outline: 0;
+}
+
+.adm .env-token::selection {
+    background: transparent;
+}
+
+.adm .env-token.confirm {
+    background: var(--a-planned-tint);
+    box-shadow: inset 0 0 0 1px var(--a-planned);
+    color: var(--a-planned-tx);
+}
+
+.adm .env-token.unset,
+.adm .env-token.unknown {
+    background: var(--a-alert-tint);
+    box-shadow: inset 0 0 0 1px rgba(224, 90, 90, 0.35);
+    color: var(--a-alert-tx);
+}
+
+.adm .env-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 40;
+    width: max(100%, 260px);
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 4px;
+    border-radius: 10px;
+    background: var(--a-panel);
+    box-shadow:
+        inset 0 0 0 1px var(--a-border),
+        0 12px 32px rgba(0, 0, 0, 0.25);
+}
+
+.adm .env-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+.adm .env-option.active {
+    background: var(--a-accent-12);
+}
+
+.adm .env-option-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--a-tx);
+    font: 12.5px var(--a-font-mono);
+}
+
+.adm .env-option-note {
+    color: var(--a-tx3);
+    font-size: 11.5px;
+    white-space: nowrap;
+}
+
+.adm .env-option-note.confirm {
+    color: var(--a-planned-tx);
+}
+
+.adm .env-menu-note {
+    margin: 4px 0 0;
+    padding: 6px 8px 4px;
+    border-top: 1px solid var(--a-border);
+    color: var(--a-tx3);
+    font-size: 11.5px;
+    line-height: 1.4;
+}
+
+.adm .pending-change-body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    min-width: 0;
+}
+
+.adm .pending-change-reasons {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.adm .pending-change-command {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 4px 4px 4px 10px;
+    border-radius: 8px;
+    background: var(--a-panel);
+    box-shadow: inset 0 0 0 1px var(--a-border);
+}
+
+.adm .pending-change-command code {
+    overflow-x: auto;
+    font-size: 12.5px;
+    white-space: nowrap;
+}
+
 .adm .toggle-row {
     position: relative;
     display: grid;

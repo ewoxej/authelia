@@ -40,6 +40,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.52
 	github.com/otiai10/copy v1.14.1
 	github.com/pelletier/go-toml/v2 v2.4.3
+	github.com/pmezard/go-difflib v1.0.0
 	github.com/prometheus/client_golang v1.25.0
 	github.com/rpadovani/sqlx-v2 v0.1.2
 	github.com/savsgio/gotils v0.0.0-20250924091648-bce9a52d7761

@@ -133,7 +133,7 @@ func TestConfigurationManagerSaveInvalidDoesNotWrite(t *testing.T) {
 	before, err := os.ReadFile(path)
 	require.NoError(t, err)
 
-	result, err := manager.Save(path, []byte("access_control:\n  default_policy: 'invalid'\n"))
+	result, _, err := manager.Save(path, []byte("access_control:\n  default_policy: 'invalid'\n"), "john")
 	require.NoError(t, err)
 	assert.False(t, result.Valid)
 
@@ -150,7 +150,7 @@ func TestConfigurationManagerSave(t *testing.T) {
 
 	content := append(original, []byte("\nregulation:\n  max_retries: 5\n")...)
 
-	result, err := manager.Save(path, content)
+	result, _, err := manager.Save(path, content, "john")
 	require.NoError(t, err)
 	require.True(t, result.Valid, "errors: %v", result.Errors)
 

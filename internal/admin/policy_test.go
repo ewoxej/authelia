@@ -37,7 +37,7 @@ func TestConfigurationPolicyNewExpressions(t *testing.T) {
 	testCases := []struct {
 		name       string
 		expression func(t *testing.T, path string) string
-		valid      bool
+		reason     string
 	}{
 		{
 			"ShouldAllowSecretInFileRoots",
@@ -47,20 +47,20 @@ func TestConfigurationPolicyNewExpressions(t *testing.T) {
 
 				return `{{ secret "` + file + `" | mindent 0 "|" | msquote }}`
 			},
-			true,
+			"",
 		},
 		{
-			"ShouldRejectSecretOutsideFileRoots",
+			"ShouldConfirmSecretOutsideFileRoots",
 			func(t *testing.T, path string) string {
 				file := filepath.Join(t.TempDir(), "outside.txt")
 				require.NoError(t, os.WriteFile(file, []byte("outside_secret_value_for_tests_123456"), 0600))
 
 				return `{{ secret "` + file + `" | mindent 0 "|" | msquote }}`
 			},
-			false,
+			"outside the directories the file picker can browse",
 		},
 		{
-			"ShouldRejectSecretThroughLinkOutOfFileRoots",
+			"ShouldConfirmSecretThroughLinkOutOfFileRoots",
 			func(t *testing.T, path string) string {
 				outside := t.TempDir()
 				require.NoError(t, os.WriteFile(filepath.Join(outside, "outside.txt"), []byte("outside_secret_value_for_tests_123456"), 0600))
@@ -68,42 +68,42 @@ func TestConfigurationPolicyNewExpressions(t *testing.T) {
 
 				return `{{ secret "` + filepath.Join(testSecretsDir(path), "link", "outside.txt") + `" }}`
 			},
-			false,
+			"outside the directories the file picker can browse",
 		},
 		{
-			"ShouldRejectRelativeSecret",
+			"ShouldConfirmRelativeSecret",
 			func(t *testing.T, path string) string {
 				return `{{ secret "secrets/jwt_secret.txt" }}`
 			},
-			false,
+			"reads the secret file 'secrets/jwt_secret.txt'",
 		},
 		{
-			"ShouldRejectEnv",
+			"ShouldConfirmUnusedEnvironmentVariable",
 			func(t *testing.T, path string) string {
-				return `'{{ env "HOME" }}'`
+				return `'{{ env "TEST_ADMIN_UNUSED_SECRET" }}'`
 			},
-			false,
+			"uses the environment variable 'TEST_ADMIN_UNUSED_SECRET'",
 		},
 		{
-			"ShouldRejectFileContent",
+			"ShouldConfirmFileContent",
 			func(t *testing.T, path string) string {
-				return `{{ fileContent "/etc/hosts" | msquote }}`
+				return `{{ fileContent "/nonexistent/file" | msquote }}`
 			},
-			false,
+			`adds the template expression '{{ fileContent "/nonexistent/file" | msquote }}'`,
 		},
 		{
-			"ShouldRejectSecretWithOtherFunctions",
+			"ShouldConfirmSecretWithOtherFunctions",
 			func(t *testing.T, path string) string {
 				return `{{ secret "` + filepath.Join(testSecretsDir(path), "jwt_secret.txt") + `" | b64enc }}`
 			},
-			false,
+			"adds the template expression",
 		},
 		{
-			"ShouldRejectMultilineExpression",
+			"ShouldConfirmMultilineExpression",
 			func(t *testing.T, path string) string {
 				return "{{ env\n  \"HOME\" }}"
 			},
-			false,
+			"uses the environment variable 'HOME'",
 		},
 	}
 
@@ -111,26 +111,73 @@ func TestConfigurationPolicyNewExpressions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			manager, path := newTemplatedTestManager(t)
 
+			// The value isn't readable before the change is confirmed.
+			t.Setenv("TEST_ADMIN_UNUSED_SECRET", "an_unused_environment_secret_123456")
+
+			original, err := manager.Read(path)
+			require.NoError(t, err)
+
 			expression := tc.expression(t, path)
 			content := testReplaceInFile(t, manager, path, `{{ secret "`+testSecretsDir(path)+`/storage_encryption_key.txt" | mindent 0 "|" | msquote }}`, expression)
 
 			result, err := manager.Validate(path, content)
 			require.NoError(t, err)
 
-			assert.Equal(t, tc.valid, result.Valid, "errors: %v", result.Errors)
+			// The expressions which need a confirmation aren't evaluated, so they can't fail or show their value.
+			assert.True(t, result.Valid, "errors: %v", result.Errors)
 
-			if !tc.valid {
-				require.Len(t, result.Errors, 1)
-				assert.Contains(t, result.Errors[0], "can't be added from the administration area")
+			if tc.reason == "" {
+				assert.Empty(t, result.Confirmations)
+			} else {
+				require.Len(t, result.Confirmations, 1)
+				assert.Contains(t, result.Confirmations[0], tc.reason)
 			}
 
-			saved, err := manager.Save(path, content)
+			saved, pending, err := manager.Save(path, content, "john")
 			require.NoError(t, err)
-			assert.Equal(t, tc.valid, saved.Valid)
+			assert.True(t, saved.Valid)
 
 			written, err := manager.Read(path)
 			require.NoError(t, err)
-			assert.Equal(t, tc.valid, strings.Contains(string(written), expression))
+
+			if tc.reason == "" {
+				assert.Nil(t, pending)
+				assert.Contains(t, string(written), expression)
+
+				return
+			}
+
+			require.NotNil(t, pending)
+			assert.Equal(t, string(original), string(written), "the file is only written once the change is confirmed")
+			assert.Equal(t, string(content), pending.Content)
+			assert.Equal(t, "john", pending.Username)
+			assert.Equal(t, PendingStatusPending, pending.Status)
+		})
+	}
+}
+
+func TestConfigurationPolicyEnvironmentVariablesInUse(t *testing.T) {
+	testCases := []struct {
+		name, expression string
+	}{
+		{"ShouldAllowSpaced", `{{ env "TEST_ADMIN_DOMAIN" }}`},
+		{"ShouldAllowCompact", `{{env "TEST_ADMIN_DOMAIN"}}`},
+		{"ShouldAllowTrimmed", `{{- env "TEST_ADMIN_DOMAIN" -}}`},
+	}
+
+	for _, tc := range testCases {
+		expression := tc.expression
+
+		t.Run(tc.name, func(t *testing.T) {
+			manager, path := newTemplatedTestManager(t)
+
+			content := testReplaceInFile(t, manager, path, "name: 'authelia_session'", "name: '"+expression+"'")
+
+			result, err := manager.Validate(path, content)
+			require.NoError(t, err)
+
+			assert.True(t, result.Valid, "errors: %v", result.Errors)
+			assert.Empty(t, result.Confirmations)
 		})
 	}
 }
@@ -152,16 +199,16 @@ func TestConfigurationPolicyFileRoots(t *testing.T) {
 		name    string
 		running func(dir string) []string
 		section func(dir string) string
-		valid   bool
+		confirm bool
 	}{
-		{"ShouldAllowUnchanged", func(string) []string { return nil }, func(string) string { return "" }, true},
-		{"ShouldAllowSameRoots", func(dir string) []string { return []string{dir} }, func(dir string) string { return "administration:\n  file_roots:\n    - '" + dir + "'\n" }, true},
-		{"ShouldRejectAddedRoots", func(string) []string { return nil }, func(string) string { return "administration:\n  file_roots:\n    - '/'\n" }, false},
-		{"ShouldRejectRemovedRoots", func(dir string) []string { return []string{dir} }, func(string) string { return "" }, false},
-		{"ShouldRejectChangedRoots", func(dir string) []string { return []string{dir} }, func(string) string { return "administration:\n  file_roots:\n    - '/'\n" }, false},
-		{"ShouldRejectRootsFromAnAlias", func(string) []string { return nil }, func(string) string {
+		{"ShouldAllowUnchanged", func(string) []string { return nil }, func(string) string { return "" }, false},
+		{"ShouldAllowSameRoots", func(dir string) []string { return []string{dir} }, func(dir string) string { return "administration:\n  file_roots:\n    - '" + dir + "'\n" }, false},
+		{"ShouldConfirmAddedRoots", func(string) []string { return nil }, func(string) string { return "administration:\n  file_roots:\n    - '/'\n" }, true},
+		{"ShouldConfirmRemovedRoots", func(dir string) []string { return []string{dir} }, func(string) string { return "" }, true},
+		{"ShouldConfirmChangedRoots", func(dir string) []string { return []string{dir} }, func(string) string { return "administration:\n  file_roots:\n    - '/'\n" }, true},
+		{"ShouldConfirmRootsFromAnAlias", func(string) []string { return nil }, func(string) string {
 			return "x-roots: &roots\n  file_roots:\n    - '/'\nadministration: *roots\n"
-		}, false},
+		}, true},
 	}
 
 	for _, tc := range testCases {
@@ -179,10 +226,11 @@ func TestConfigurationPolicyFileRoots(t *testing.T) {
 			result, err := manager.Validate(path, content)
 			require.NoError(t, err)
 
-			assert.Equal(t, tc.valid, result.Valid, "errors: %v", result.Errors)
-
-			if !tc.valid {
-				assert.Contains(t, strings.Join(result.Errors, "\n"), "administration: file_roots: option can't be changed from the administration area")
+			if tc.confirm {
+				require.Len(t, result.Confirmations, 1)
+				assert.Contains(t, result.Confirmations[0], "administration.file_roots")
+			} else {
+				assert.Empty(t, result.Confirmations)
 			}
 		})
 	}
@@ -224,7 +272,7 @@ func TestConfigurationSectionsKeepSecretExpressions(t *testing.T) {
 	content, err := manager.WithSections(path, map[string]any{"session": values})
 	require.NoError(t, err)
 
-	result, err := manager.Save(path, content)
+	result, _, err := manager.Save(path, content, "john")
 	require.NoError(t, err)
 	require.True(t, result.Valid, "errors: %v", result.Errors)
 
@@ -257,4 +305,43 @@ func TestRedact(t *testing.T) {
 			assert.Equal(t, tc.expected, redact(tc.message, values))
 		})
 	}
+}
+
+func TestEnvironmentVariables(t *testing.T) {
+	manager, _ := newTemplatedTestManager(t)
+
+	t.Setenv("TEST_ADMIN_APP_URL", "https://app.example.com")
+	t.Setenv("AUTHELIA_TEST_ADMIN_SECRET", "hidden")
+	t.Setenv("GOOGLE_TEST_ADMIN_ID", "shown")
+	t.Setenv("LC_TEST_ADMIN", "hidden")
+	t.Setenv("FORCE_COLOR", "1")
+
+	variables, err := manager.EnvironmentVariables()
+	require.NoError(t, err)
+
+	byName := map[string]EnvironmentVariable{}
+
+	for _, variable := range variables {
+		byName[variable.Name] = variable
+	}
+
+	assert.Equal(t, EnvironmentVariable{Name: "TEST_ADMIN_APP_URL", Set: true}, byName["TEST_ADMIN_APP_URL"])
+	assert.Equal(t, EnvironmentVariable{Name: "TEST_ADMIN_DOMAIN", Used: true, Set: true}, byName["TEST_ADMIN_DOMAIN"])
+	assert.Contains(t, byName, "GOOGLE_TEST_ADMIN_ID")
+
+	for _, name := range []string{"PATH", "HOME", "AUTHELIA_TEST_ADMIN_SECRET", "LC_TEST_ADMIN", "FORCE_COLOR"} {
+		assert.NotContains(t, byName, name)
+	}
+}
+
+func TestEnvironmentVariablesUsedButNotSet(t *testing.T) {
+	manager, path := newTemplatedTestManager(t)
+
+	content := testReplaceInFile(t, manager, path, "name: 'authelia_session'", `name: '{{ env "TEST_ADMIN_NOT_SET" }}'`)
+	require.NoError(t, os.WriteFile(path, content, 0600))
+
+	variables, err := manager.EnvironmentVariables()
+	require.NoError(t, err)
+
+	assert.Contains(t, variables, EnvironmentVariable{Name: "TEST_ADMIN_NOT_SET", Used: true})
 }

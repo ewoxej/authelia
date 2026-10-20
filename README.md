@@ -63,11 +63,35 @@ Available at `/admin` to members of the administrator group.
   - Changes are validated before they're written, and Janus restarts itself to apply them.
   - Template expressions such as `{{ env "DOMAIN" }}` and `{{ secret "/secrets/key" }}` are kept exactly as written.
   - A file picker for paths, which can also create folders and generate secret files.
+  - Typing `$` in a text field suggests environment variables, which are written as `{{ env "NAME" }}` and shown as
+    tokens. Only names are listed, never values.
 - **Activity**: sign-in attempts, second factor checks and bans with filters, search and CSV export.
 - **Bans**: ban and unban users and IP addresses, with the history of expired bans.
 
 Opening the administration area requires a recent second factor: signing in with it counts, and after the elevation
 lifespan the second factor is asked for again.
+
+### Changes confirmed on the server
+
+Some changes could expose what the configuration doesn't use yet, so the administration area can't save them on its
+own. They wait until someone with access to the server confirms them:
+
+- reading an environment variable the configuration doesn't reference yet;
+- reading a secret file outside the directories the file picker can browse;
+- any other new template expression, such as `fileContent`;
+- changing `administration.file_roots`.
+
+Such a change isn't evaluated until it's confirmed, so its values can't show up in validation errors. Review and apply
+it on the server, where the command shows the difference to the current file and asks for a confirmation:
+
+```bash
+docker exec -it janus authelia admin changes
+docker exec -it janus authelia admin changes apply <id>
+docker exec -it janus authelia admin changes reject <id>
+```
+
+A change expires after a day, and is refused if the file was changed in the meantime. The administration area shows
+when it's applied and offers to restart.
 
 ### Sign-in pages and user settings
 

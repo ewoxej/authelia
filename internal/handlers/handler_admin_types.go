@@ -211,6 +211,38 @@ type adminConfigurationSaveBody struct {
 	Saved      bool                                 `json:"saved"`
 	Validation *admin.ConfigurationValidationResult `json:"validation"`
 	Content    string                               `json:"content,omitempty"`
+
+	// Pending is set when the change waits for a confirmation on the server instead of being saved.
+	Pending *adminPendingChangeBody `json:"pending,omitempty"`
+}
+
+// adminPendingChangeBody is a configuration change which waits for a confirmation on the server, without its content.
+type adminPendingChangeBody struct {
+	ID       string     `json:"id"`
+	Path     string     `json:"path"`
+	Username string     `json:"username"`
+	Reasons  []string   `json:"reasons"`
+	Status   string     `json:"status"`
+	Created  time.Time  `json:"created"`
+	Expires  time.Time  `json:"expires"`
+	Decided  *time.Time `json:"decided,omitempty"`
+
+	// Command is what confirms the change on the server.
+	Command string `json:"command"`
+}
+
+func newAdminPendingChangeBody(change *admin.PendingChange) *adminPendingChangeBody {
+	return &adminPendingChangeBody{
+		ID:       change.ID,
+		Path:     change.Path,
+		Username: change.Username,
+		Reasons:  change.Reasons,
+		Status:   change.Status,
+		Created:  change.Created,
+		Expires:  change.Expires,
+		Decided:  change.Decided,
+		Command:  "authelia admin changes apply " + change.ID,
+	}
 }
 
 func newAdminBanBodiesUser(bans []model.BannedUser) (bodies []adminBanBody) {

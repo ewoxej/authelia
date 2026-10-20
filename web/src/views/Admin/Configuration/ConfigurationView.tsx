@@ -10,6 +10,7 @@ import { useParams, useSearchParams } from "react-router";
 
 import { useNotifications } from "@contexts/NotificationsContext";
 import {
+    AdminPendingChange,
     AdminSaveResult,
     AdminValidationResult,
     getAdminConfigurationFile,
@@ -23,11 +24,13 @@ import {
 } from "@services/Admin";
 import { useAdmin, useAdminErrorHandler } from "@views/Admin/Common/AdminContext";
 import ConfirmDialog from "@views/Admin/Common/ConfirmDialog";
+import { refreshEnvironment } from "@views/Admin/Common/Environment";
 import { compact } from "@views/Admin/Common/Fields";
 import { formatDateTime } from "@views/Admin/Common/Format";
 import { waitForRestart } from "@views/Admin/Common/Restart";
 import { Badge, Btn, Card, Dot, Note, PageHeader, Seg, Spinner, cx } from "@views/Admin/Common/ui";
 import { SectionDef, SectionForm, Value, countChanges } from "@views/Admin/Configuration/FormEngine";
+import PendingChanges from "@views/Admin/Configuration/PendingChanges";
 import SaveDialog, { PendingSave, ValidationResult } from "@views/Admin/Configuration/SaveDialog";
 import { sections, wholeFileSection } from "@views/Admin/Configuration/Sections";
 import YamlEditor from "@views/Admin/Configuration/YamlEditor";
@@ -50,6 +53,8 @@ const ConfigurationView = function () {
     const [restartOpen, setRestartOpen] = useState(false);
     // Incremented after each save so the editors reload the file.
     const [revision, setRevision] = useState(0);
+    // Incremented after a change was submitted for a confirmation on the server.
+    const [submitted, setSubmitted] = useState(0);
 
     const sectionId = params.section ?? sections[0].id;
     const wholeFile = sectionId === wholeFileSection.id;
@@ -85,6 +90,21 @@ const ConfigurationView = function () {
         createSuccessNotification(translate("The configuration was saved"));
     }, [createSuccessNotification, translate]);
 
+    const onPending = useCallback(
+        (_change: AdminPendingChange) => {
+            setSubmitted((s) => s + 1);
+            createInfoNotification(translate("The change was sent for a confirmation on the server"));
+        },
+        [createInfoNotification, translate],
+    );
+
+    // A change confirmed on the server was written to the file, which the editors load again.
+    const onApplied = useCallback(() => {
+        setRevision((r) => r + 1);
+        setRestartPending(true);
+        refreshEnvironment();
+    }, []);
+
     const handleRestart = async () => {
         try {
             await postAdminRestart();
@@ -104,7 +124,7 @@ const ConfigurationView = function () {
         return <Note tone="warn">{translate("No configuration files were loaded.")}</Note>;
     }
 
-    const panelProps = { onSaved, path, review };
+    const panelProps = { onPending, onSaved, path, review };
     const editorKey = `${path}-${revision}-${sectionId}-${mode}`;
 
     return (
@@ -182,6 +202,8 @@ const ConfigurationView = function () {
                 </div>
             ) : null}
 
+            <PendingChanges refresh={submitted} onApplied={onApplied} />
+
             {restartPending ? (
                 <Note tone="warn">
                     <span style={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 12 }}>
@@ -221,6 +243,8 @@ interface PanelProps {
     path: string;
     review: (_after: string, _validation: AdminValidationResult, _save: () => Promise<boolean>) => Promise<void>;
     onSaved: () => void;
+    // Called when the change was sent for a confirmation on the server instead of being saved.
+    onPending: (_change: AdminPendingChange) => void;
 }
 
 /** Validates a change, opens the review dialog and saves the change when it's confirmed. */
@@ -245,6 +269,12 @@ function useReviewAndSave(props: PanelProps) {
                     const saved = await save();
 
                     onValidated?.(saved.validation);
+
+                    if (saved.pending) {
+                        props.onPending(saved.pending);
+
+                        return true;
+                    }
 
                     if (saved.saved) {
                         props.onSaved();

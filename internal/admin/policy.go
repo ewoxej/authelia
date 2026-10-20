@@ -17,11 +17,13 @@ import (
 	"github.com/authelia/authelia/v4/internal/configuration"
 )
 
-// The administration area can't be used to read files or environment variables the configuration doesn't already use.
-// Template expressions are evaluated when a configuration is validated and when Janus restarts, so a new expression
-// could read any file and show it in a validation error or in a setting which is displayed somewhere. A new expression
-// therefore has to read a secret from a file in one of the directories the file picker can browse, which is what the
-// web UI writes, and those directories can't be changed from the administration area.
+// The administration area can't read files or environment variables the configuration doesn't already use without the
+// confirmation of someone with access to the server. Template expressions are evaluated when a configuration is
+// validated and when Janus restarts, so a new expression could read any file and show it in a validation error or in a
+// setting which is displayed somewhere. The web UI can add secrets from files in the directories the file picker can
+// browse and the environment variables the configuration already uses. Everything else, and changing those
+// directories, is saved as a pending change which has to be applied with 'authelia admin changes' on the server, and
+// isn't evaluated until then.
 
 const (
 	redacted = "<redacted>"
@@ -40,6 +42,9 @@ var (
 	// reAllowedSecretArguments matches what may follow the path of a new secret expression: the functions which format
 	// the content of the file.
 	reAllowedSecretArguments = `((?:\s*\|\s*(?:mindent|nindent|indent|msquote|mquote|squote|quote|trim)(?:\s+(?:\d+|auto|"(?:[^"\\]|\\.)*"))*)*)`
+
+	// reEnvName matches the names of the environment variables an expression reads.
+	reEnvName = regexp.MustCompile(`\benv\s+"([^"]+)"`)
 
 	// reSensitiveFunction matches the template functions which read files or environment variables.
 	reSensitiveFunction = regexp.MustCompile(`\b(?:secret|fileContent|env|expandenv)\b`)
@@ -65,59 +70,95 @@ func templateExpressions(filter *configuration.TemplateBytesFilter, content []by
 	return regexp.MustCompile(`(?s)`+regexp.QuoteMeta(left)+`.*?`+regexp.QuoteMeta(right)).FindAllString(string(content), -1)
 }
 
-// policyErrors returns the reasons the content can't be saved from the administration area. It runs before anything in
-// the content is evaluated.
-func (m *ConfigurationManager) policyErrors(content []byte) (errs []string, err error) {
+// pendingStub replaces the expressions which need a confirmation while the configuration is validated, so they're not
+// evaluated before someone with access to the server confirmed them.
+const pendingStub = "janus-pending-confirmation"
+
+// confirmations returns the reasons the content needs the confirmation of someone with access to the server, and the
+// expressions which can't be evaluated until then. It runs before anything in the content is evaluated.
+func (m *ConfigurationManager) confirmations(content []byte) (reasons, expressions []string, err error) {
 	filter := m.templateFilter()
 	if filter == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	var paths []string
 
 	if paths, err = m.expand(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	existing := map[string]bool{}
+	environment := map[string]bool{}
 
 	for _, path := range paths {
 		var current []byte
 
 		if current, err = os.ReadFile(path); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		for _, expression := range templateExpressions(filter, current) {
 			existing[expression] = true
+
+			for _, match := range reEnvName.FindAllStringSubmatch(expression, -1) {
+				environment[match[1]] = true
+			}
 		}
 	}
 
 	left, right := filter.Delimiters()
 
 	reSecret := regexp.MustCompile(`^` + regexp.QuoteMeta(left) + `-?\s*secret\s+("(?:[^"\\]|\\.)*")` + reAllowedSecretArguments + `\s*-?` + regexp.QuoteMeta(right) + `$`)
+	reEnv := regexp.MustCompile(`^` + regexp.QuoteMeta(left) + `-?\s*env\s+"([A-Za-z_][A-Za-z0-9_]*)"\s*-?` + regexp.QuoteMeta(right) + `$`)
 
-	var browser *FileBrowser
+	var (
+		browser *FileBrowser
+		seen    = map[string]bool{}
+	)
 
 	for _, expression := range templateExpressions(filter, content) {
-		if existing[expression] {
+		if existing[expression] || seen[expression] {
 			continue
 		}
+
+		seen[expression] = true
 
 		if browser == nil {
 			browser = NewFileBrowser(m.secretRoots(paths))
 		}
 
-		if match := reSecret.FindStringSubmatch(expression); match != nil {
-			if path, err := strconv.Unquote(match[1]); err == nil && filepath.IsAbs(path) && browser.Allowed(path) {
+		var reason string
+
+		switch match := reSecret.FindStringSubmatch(expression); {
+		case match != nil:
+			path, err := strconv.Unquote(match[1])
+
+			switch {
+			case err == nil && filepath.IsAbs(path) && browser.Allowed(path):
 				continue
+			case err == nil:
+				reason = fmt.Sprintf("reads the secret file '%s', which is outside the directories the file picker can browse", path)
+			}
+		default:
+			if match = reEnv.FindStringSubmatch(expression); match != nil {
+				if environment[match[1]] {
+					continue
+				}
+
+				reason = fmt.Sprintf("uses the environment variable '%s', which the configuration doesn't use yet", match[1])
 			}
 		}
 
-		errs = append(errs, fmt.Sprintf("the template expression '%s' can't be added from the administration area: only secrets from the directories the file picker can browse can be added, other expressions have to be added to the file on the server", expression))
+		if reason == "" {
+			reason = fmt.Sprintf("adds the template expression '%s'", expression)
+		}
+
+		reasons = append(reasons, reason)
+		expressions = append(expressions, expression)
 	}
 
-	return errs, nil
+	return reasons, expressions, nil
 }
 
 // secretRoots returns the directories new secret expressions can read from, which are the directories the file picker
@@ -136,13 +177,21 @@ func (m *ConfigurationManager) secretRoots(paths []string) []string {
 	return roots
 }
 
-// fileRootsError returns an error if the configuration changes the directories the file picker can browse.
-func (m *ConfigurationManager) fileRootsError(roots []string) string {
+// fileRootsChange describes the change if the configuration changes the directories the file picker can browse.
+func (m *ConfigurationManager) fileRootsChange(roots []string) string {
 	if slices.Equal(roots, m.fileRoots) {
 		return ""
 	}
 
-	return "administration: file_roots: option can't be changed from the administration area, it has to be changed in the file on the server"
+	format := func(roots []string) string {
+		if len(roots) == 0 {
+			return "the directories of the configuration files"
+		}
+
+		return "'" + strings.Join(roots, "', '") + "'"
+	}
+
+	return fmt.Sprintf("changes the directories the file picker can browse (administration.file_roots) from %s to %s", format(m.fileRoots), format(roots))
 }
 
 // sensitiveValues returns the values the template expressions which read files or environment variables evaluate to,

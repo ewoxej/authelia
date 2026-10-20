@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 
-import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ShieldAlert, XCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@components/UI/Dialog";
@@ -39,6 +39,21 @@ export const ValidationResult = function (props: { validation: AdminValidationRe
                     <span style={{ overflowWrap: "anywhere" }}>{error}</span>
                 </p>
             ))}
+            {validation.confirmations?.length ? (
+                <div style={{ ...row, color: "var(--a-planned-tx)" }}>
+                    <ShieldAlert size={16} strokeWidth={1.75} aria-hidden style={{ flex: "none", marginTop: 1 }} />
+                    <span style={{ overflowWrap: "anywhere" }}>
+                        {translate(
+                            "Saving this has to be confirmed by someone with access to the server, as the change:",
+                        )}
+                        <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+                            {validation.confirmations.map((reason) => (
+                                <li key={reason}>{reason}</li>
+                            ))}
+                        </ul>
+                    </span>
+                </div>
+            ) : null}
             {validation.warnings.map((warning) => (
                 <p key={warning} style={{ ...row, color: "var(--a-planned-tx)" }}>
                     <AlertTriangle size={16} strokeWidth={1.75} aria-hidden style={{ marginTop: 1 }} />
@@ -90,7 +105,7 @@ const SaveDialog = function (props: { pending: null | PendingSave; onClose: () =
                         disabled={busy || !pending?.validation.valid || pending.before === pending.after}
                         onClick={handleSave}
                     >
-                        {translate("Save")}
+                        {translate(pending?.validation.confirmations?.length ? "Send for confirmation" : "Save")}
                     </Btn>
                 </DialogFooter>
             </DialogContent>

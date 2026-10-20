@@ -20,11 +20,15 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { AdminEnvironmentVariable } from "@services/Admin";
 import { useAdmin } from "@views/Admin/Common/AdminContext";
 import ConfirmDialog from "@views/Admin/Common/ConfirmDialog";
+import { useEnvironment } from "@views/Admin/Common/Environment";
 import FileBrowserDialog, { FileBrowserMode } from "@views/Admin/Common/FileBrowserDialog";
 import { Badge, BadgeTone, Btn, Card, CardHeader, IconBtn, Note, Seg, Toggle, cx } from "@views/Admin/Common/ui";
 import { DurationInput, DurationSpecial } from "@views/Admin/Configuration/DurationInput";
+import EnvTokenInput from "@views/Admin/Configuration/EnvTokenInput";
+import { hasOtherTemplates, parseEnvSegments } from "@views/Admin/Configuration/EnvTokens";
 
 export type Value = Record<string, unknown>;
 
@@ -708,8 +712,11 @@ export const FieldRenderer = function (props: RenderProps & { field: FieldDef })
     const { t: translate } = useTranslation("admin");
     const id = useId();
     const { overview } = useAdmin();
+    const variables = useEnvironment();
     const [browsing, setBrowsing] = useState(false);
     const { field, initial, onChange, value } = props;
+    // Environment variables are referenced with template expressions, which need the template filter.
+    const templates = (overview.configuration_filters ?? []).includes("template");
 
     if (field.kind === "group") {
         return <SubGroup {...props} field={field} />;
@@ -830,6 +837,23 @@ export const FieldRenderer = function (props: RenderProps & { field: FieldDef })
     const textField = () => {
         if (current !== undefined && current !== null && typeof current === "object") {
             return shell(<ComplexValue value={current} />, true);
+        }
+
+        if (templates && field.kind === "text" && !hasOtherTemplates(asString(current))) {
+            return shell(
+                withButton(
+                    <EnvTokenInput
+                        id={id}
+                        className={cx("inp mono", changed && "changed")}
+                        placeholder={field.placeholder}
+                        ariaLabel={translate(field.label)}
+                        disabled={disabled}
+                        value={asString(current) ?? ""}
+                        variables={variables}
+                        onChange={(v) => set(v === "" ? undefined : v)}
+                    />,
+                ),
+            );
         }
 
         const template = isTemplate(current);
@@ -989,6 +1013,7 @@ export const FieldRenderer = function (props: RenderProps & { field: FieldDef })
                     placeholder={field.placeholder ? translate(field.placeholder) : translate("Add a value")}
                     changed={changed}
                     disabled={disabled}
+                    variables={templates ? variables : undefined}
                     onChange={(v) => set(v.length === 0 ? undefined : v)}
                 />,
             );
@@ -1111,12 +1136,34 @@ const ChoiceInput = function (props: {
     );
 };
 
+/** The text of a value with the environment variables it references shown as tokens. */
+const EnvText = function (props: { value: string }) {
+    // The segments of a value never change order, so their position identifies them.
+    const segments = parseEnvSegments(props.value).map((segment, position) => ({ ...segment, position }));
+
+    return (
+        <>
+            {segments.map((segment) =>
+                segment.kind === "env" ? (
+                    <span key={`env-${segment.position}`} className="env-token">
+                        ${segment.name}
+                    </span>
+                ) : (
+                    <span key={`text-${segment.position}`}>{segment.text}</span>
+                ),
+            )}
+        </>
+    );
+};
+
 export const TagInput = function (props: {
     id?: string;
     values: string[];
     placeholder: string;
     changed?: boolean;
     disabled?: boolean;
+    // When set, values can reference these environment variables, which are suggested after typing '$'.
+    variables?: AdminEnvironmentVariable[];
     onChange: (_values: string[]) => void;
 }) {
     const { t: translate } = useTranslation("admin");
@@ -1135,7 +1182,7 @@ export const TagInput = function (props: {
         setDraft("");
     };
 
-    const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    const handleKeyDown = (e: KeyboardEvent<HTMLElement>) => {
         if (e.key === "Enter" || e.key === ",") {
             e.preventDefault();
             add();
@@ -1148,7 +1195,7 @@ export const TagInput = function (props: {
         <div className={cx("tag-input", props.changed && "changed")}>
             {props.values.map((item) => (
                 <span key={item} className="tag" title={item}>
-                    <span className="tag-text">{item}</span>
+                    <span className="tag-text">{props.variables ? <EnvText value={item} /> : item}</span>
                     <button
                         type="button"
                         aria-label={translate("Remove {{value}}", { value: item })}
@@ -1159,16 +1206,30 @@ export const TagInput = function (props: {
                     </button>
                 </span>
             ))}
-            <input
-                id={props.id}
-                value={draft}
-                placeholder={props.placeholder}
-                aria-label={props.placeholder}
-                disabled={props.disabled}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onBlur={add}
-            />
+            {props.variables ? (
+                <EnvTokenInput
+                    id={props.id}
+                    className="tag-draft"
+                    value={draft}
+                    variables={props.variables}
+                    placeholder={props.placeholder}
+                    disabled={props.disabled}
+                    onChange={setDraft}
+                    onKeyDown={handleKeyDown}
+                    onBlur={add}
+                />
+            ) : (
+                <input
+                    id={props.id}
+                    value={draft}
+                    placeholder={props.placeholder}
+                    aria-label={props.placeholder}
+                    disabled={props.disabled}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    onBlur={add}
+                />
+            )}
         </div>
     );
 };

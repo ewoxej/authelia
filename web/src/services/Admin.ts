@@ -187,12 +187,40 @@ export interface AdminValidationResult {
     valid: boolean;
     errors: string[];
     warnings: string[];
+    // Why the change can only be saved once someone with access to the server confirms it.
+    confirmations?: string[];
+}
+
+export type AdminPendingChangeStatus = "applied" | "cancelled" | "expired" | "pending" | "rejected";
+
+/** A configuration change which waits for the confirmation of someone with access to the server. */
+export interface AdminPendingChange {
+    id: string;
+    path: string;
+    username: string;
+    reasons: string[];
+    status: AdminPendingChangeStatus;
+    created: string;
+    expires: string;
+    decided?: string;
+    // The command which confirms the change on the server.
+    command: string;
 }
 
 export interface AdminSaveResult {
     saved: boolean;
     validation: AdminValidationResult;
     content?: string;
+    // Set instead of saved when the change waits for a confirmation on the server.
+    pending?: AdminPendingChange;
+}
+
+/** An environment variable the configuration can reference, its value is never sent. */
+export interface AdminEnvironmentVariable {
+    name: string;
+    // Already referenced by the configuration, so it can be added without a confirmation.
+    used: boolean;
+    set: boolean;
 }
 
 interface AdminResponse<T> {
@@ -347,3 +375,11 @@ export const saveAdminConfigurationSectionsText = (
         path,
         validate_only: validateOnly,
     });
+
+export const getAdminPendingChanges = () => request<AdminPendingChange[]>("GET", "/configuration/pending");
+export const getAdminPendingChange = (id: string) =>
+    request<AdminPendingChange>("GET", `/configuration/pending/${encodeURIComponent(id)}`);
+export const cancelAdminPendingChange = (id: string) =>
+    request<undefined>("DELETE", `/configuration/pending/${encodeURIComponent(id)}`);
+
+export const getAdminEnvironment = () => request<AdminEnvironmentVariable[]>("GET", "/environment");
