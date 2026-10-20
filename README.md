@@ -73,13 +73,17 @@ lifespan the second factor is asked for again.
 
 ### Changes confirmed on the server
 
-Some changes could expose what the configuration doesn't use yet, so the administration area can't save them on its
-own. They wait until someone with access to the server confirms them:
+Some changes could expose secrets or files the administration area doesn't show, so it can't save them on its own.
+They wait until someone with access to the server confirms them:
 
 - reading an environment variable the configuration doesn't reference yet;
 - reading a secret file outside the directories the file picker can browse;
 - any other new template expression, such as `fileContent`;
-- changing `administration.file_roots`.
+- changing `administration.file_roots`;
+- changing the address or TLS settings of a service Janus sends credentials to (LDAP, SMTP, PostgreSQL, MySQL, Redis,
+  Duo), as they would go to the new address;
+- pointing a file setting, such as the users file, the log or the notification file, outside the directories the file
+  picker can browse, or a file Janus writes to a file which exists already.
 
 Such a change isn't evaluated until it's confirmed, so its values can't show up in validation errors. Review and apply
 it on the server, where the command shows the difference to the current file and asks for a confirmation:

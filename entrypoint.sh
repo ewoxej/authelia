@@ -11,6 +11,7 @@ if [ -n "${1}" ] && [ "${1}" != "--config" ]; then
 elif [ "$(id -u)" != 0 ] || [ "$(id -g)" != 0 ]; then
   exec authelia "${@}"
 else
-  chown -R "${PUID}:${PGID}" /config
+  # -h changes links themselves, so a link in /config never hands its target to the user.
+  chown -hR "${PUID}:${PGID}" /config
   exec su-exec "${PUID}:${PGID}" authelia "${@}"
 fi

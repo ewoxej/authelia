@@ -618,22 +618,13 @@ func (m *ConfigurationManager) validate(path string, content []byte, confirm boo
 	}
 
 	val := schema.NewStructValidator()
-	config := &schema.Configuration{}
-
-	sources := configuration.NewDefaultSourcesWithDefaults(files, m.filters, configuration.DefaultEnvPrefix, configuration.DefaultEnvDelimiter, []configuration.Source{configuration.NewDefaultsSource()})
 
 	var (
-		definitions *schema.Definitions
-		keys        []string
+		config *schema.Configuration
+		keys   []string
 	)
 
-	if definitions, err = configuration.LoadDefinitions(val, sources...); err != nil {
-		result.Errors = append(result.Errors, err.Error())
-
-		return result, nil
-	}
-
-	if keys, err = configuration.LoadAdvanced(val, "", config, definitions, sources...); err != nil {
+	if config, keys, err = m.load(val, files); err != nil {
 		result.Errors = append(result.Errors, err.Error())
 
 		return result, nil
@@ -641,8 +632,19 @@ func (m *ConfigurationManager) validate(path string, content []byte, confirm boo
 
 	validator.ValidateKeys(keys, configuration.GetMultiKeyMappedDeprecationKeys(), configuration.DefaultEnvPrefix, val)
 
-	if change := m.fileRootsChange(config.Administration.FileRoots); confirm && change != "" {
-		result.Confirmations = append(result.Confirmations, change)
+	if confirm {
+		if change := m.fileRootsChange(config.Administration.FileRoots); change != "" {
+			result.Confirmations = append(result.Confirmations, change)
+		}
+
+		// Compared with the files as they are rather than the running configuration, so a change applied on the server
+		// but not restarted yet isn't asked for again. When they don't load every guarded setting counts as changed.
+		current, _, err := m.load(schema.NewStructValidator(), paths)
+		if err != nil {
+			current = &schema.Configuration{}
+		}
+
+		result.Confirmations = append(result.Confirmations, m.guardedChanges(current, config, m.secretRoots(paths))...)
 	}
 
 	tc := &tls.Config{
@@ -664,6 +666,25 @@ func (m *ConfigurationManager) validate(path string, content []byte, confirm boo
 	result.Valid = len(result.Errors) == 0
 
 	return result, nil
+}
+
+// load loads the configuration from the files with the filters and the environment, as Janus does on start.
+func (m *ConfigurationManager) load(val *schema.StructValidator, files []string) (config *schema.Configuration, keys []string, err error) {
+	config = &schema.Configuration{}
+
+	sources := configuration.NewDefaultSourcesWithDefaults(files, m.filters, configuration.DefaultEnvPrefix, configuration.DefaultEnvDelimiter, []configuration.Source{configuration.NewDefaultsSource()})
+
+	var definitions *schema.Definitions
+
+	if definitions, err = configuration.LoadDefinitions(val, sources...); err != nil {
+		return nil, nil, err
+	}
+
+	if keys, err = configuration.LoadAdvanced(val, "", config, definitions, sources...); err != nil {
+		return nil, nil, err
+	}
+
+	return config, keys, nil
 }
 
 func writeFileAtomic(path string, content []byte) (err error) {
