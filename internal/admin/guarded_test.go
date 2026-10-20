@@ -80,6 +80,13 @@ func TestConfigurationPolicyGuardedChanges(t *testing.T) {
 			"",
 		},
 		{
+			"ShouldConfirmAdministrationEndpoint",
+			func(_ *testing.T, _ string, content string) string {
+				return content + "administration:\n  endpoint: 'https://idm-admin.example.com'\n"
+			},
+			"changes where the administration area is available (administration.endpoint) from '' to 'https://idm-admin.example.com'",
+		},
+		{
 			"ShouldConfirmTrustedCertificatesOutsideFileRoots",
 			func(_ *testing.T, _ string, content string) string {
 				return content + "certificates_directory: '/etc/ssl/certs'\n"

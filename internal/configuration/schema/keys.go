@@ -31,6 +31,7 @@ var Keys = []string{
 	"administration.admin_group",
 	"administration.disable_restart",
 	"administration.enabled",
+	"administration.endpoint",
 	"administration.file_roots",
 	"authentication_backend.file.extra_attributes",
 	"authentication_backend.file.extra_attributes.*",

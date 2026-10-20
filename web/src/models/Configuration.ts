@@ -9,6 +9,8 @@ export interface Configuration {
     password_change_disabled: boolean;
     password_reset_disabled: boolean;
     administrator?: boolean;
+    // Where the administration area is when it's only available on its own endpoint.
+    administration_url?: string;
 }
 
 export interface SecuritySettingsConfiguration {

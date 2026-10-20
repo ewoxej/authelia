@@ -12,6 +12,7 @@ interface ConfigurationPayload {
     password_change_disabled: boolean;
     password_reset_disabled: boolean;
     administrator?: boolean;
+    administration_url?: string;
 }
 
 export async function getConfiguration(): Promise<Configuration> {

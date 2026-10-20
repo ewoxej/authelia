@@ -241,8 +241,9 @@ func handlerMain(config *schema.Configuration, providers middlewares.Providers) 
 		adminSessionBuilder := middlewares.NewBridgeBuilder(*config, providers).
 			WithPreMiddlewares(middlewares.SecurityHeadersBase, middlewares.SecurityHeadersNoStore, middlewares.SecurityHeadersCSPNone)
 
-		adminBuilder = adminBuilder.WithPostMiddlewares(middlewares.RequireAdminSameOrigin, middlewares.RequireAdmin, middlewares.RequireAdminConfirmed)
-		adminSessionBuilder = adminSessionBuilder.WithPostMiddlewares(middlewares.RequireAdminSameOrigin, middlewares.RequireAdmin)
+		// Who isn't an administrator is told there's nothing here before anything else.
+		adminBuilder = adminBuilder.WithPostMiddlewares(middlewares.RequireAdmin, middlewares.RequireAdminSameOrigin, middlewares.RequireAdminConfirmed)
+		adminSessionBuilder = adminSessionBuilder.WithPostMiddlewares(middlewares.RequireAdmin, middlewares.RequireAdminSameOrigin)
 
 		middlewareAdmin := adminBuilder.Build()
 

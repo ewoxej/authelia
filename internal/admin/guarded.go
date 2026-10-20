@@ -6,6 +6,7 @@ package admin
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -218,6 +219,10 @@ func (m *ConfigurationManager) guardedChanges(current, changed *schema.Configura
 		}
 	}
 
+	if before, after := urlString(current.Administration.Endpoint), urlString(changed.Administration.Endpoint); before != after {
+		reasons = append(reasons, fmt.Sprintf("changes where the administration area is available (administration.endpoint) from '%s' to '%s'", before, after))
+	}
+
 	browser := NewFileBrowser(roots)
 
 	for _, guarded := range guardedPaths {
@@ -241,6 +246,14 @@ func (m *ConfigurationManager) guardedChanges(current, changed *schema.Configura
 	}
 
 	return reasons
+}
+
+func urlString(u *url.URL) string {
+	if u == nil {
+		return ""
+	}
+
+	return u.String()
 }
 
 func isExistingFile(path string) bool {

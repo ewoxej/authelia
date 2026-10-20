@@ -25,6 +25,10 @@ func ConfigurationGET(ctx *middlewares.AutheliaCtx) {
 
 	if userSession, err := ctx.GetSession(); err == nil {
 		body.Administrator = middlewares.IsAdministrator(ctx, &userSession)
+
+		if endpoint := ctx.Configuration.Administration.Endpoint; body.Administrator && endpoint != nil {
+			body.AdministrationURL = endpoint.Scheme + "://" + endpoint.Host + "/admin"
+		}
 	}
 
 	ctx.Logger.WithFields(

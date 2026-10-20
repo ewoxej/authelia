@@ -7,7 +7,10 @@ package middlewares
 import (
 	"bytes"
 	"mime"
+	"net"
+	"net/url"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/valyala/fasthttp"
@@ -25,13 +28,53 @@ func IsAdministrator(ctx *AutheliaCtx, userSession *session.UserSession) bool {
 	return slices.Contains(userSession.Groups, ctx.Configuration.Administration.AdminGroup)
 }
 
+// IsAdminEndpoint returns true if the request was made on the administration endpoint, or there's none configured. Both
+// the Host header and the forwarded host have to match it, so a forwarded host header which a misconfigured proxy lets
+// through from the client isn't enough to reach the administration area from another host.
+func IsAdminEndpoint(ctx *AutheliaCtx) bool {
+	endpoint := ctx.Configuration.Administration.Endpoint
+	if endpoint == nil {
+		return true
+	}
+
+	return isEndpointHost(endpoint, string(ctx.GetXForwardedHost())) && isEndpointHost(endpoint, string(ctx.Request.Header.Host()))
+}
+
+func isEndpointHost(endpoint *url.URL, host string) bool {
+	hostname, port, err := net.SplitHostPort(host)
+	if err != nil {
+		hostname, port = host, ""
+	}
+
+	if !strings.EqualFold(hostname, endpoint.Hostname()) {
+		return false
+	}
+
+	// Without a port the default port of the scheme is meant, on both sides.
+	fallback := "443"
+	if endpoint.Scheme == "http" {
+		fallback = "80"
+	}
+
+	expected := endpoint.Port()
+	if expected == "" {
+		expected = fallback
+	}
+
+	if port == "" {
+		port = fallback
+	}
+
+	return port == expected
+}
+
 // RequireAdmin requires the administration UI to be enabled and the user to be a member of the administrator group who
-// has completed two-factor authentication.
+// has completed two-factor authentication. Everyone else, and requests outside the administration endpoint, are told
+// there's nothing there so the administration area isn't revealed to them.
 func RequireAdmin(next RequestHandler) RequestHandler {
 	return func(ctx *AutheliaCtx) {
-		if !ctx.Configuration.Administration.Enabled {
-			ctx.SetStatusCode(fasthttp.StatusNotFound)
-			ctx.SetJSONError(fasthttp.StatusMessage(fasthttp.StatusNotFound))
+		if !ctx.Configuration.Administration.Enabled || !IsAdminEndpoint(ctx) {
+			replyAdminNotFound(ctx)
 
 			return
 		}
@@ -40,7 +83,17 @@ func RequireAdmin(next RequestHandler) RequestHandler {
 		if err != nil {
 			ctx.Logger.WithError(err).Error("Error occurred retrieving the user session during an administrator check")
 
-			ctx.ReplyForbidden()
+			replyAdminNotFound(ctx)
+
+			return
+		}
+
+		if !IsAdministrator(ctx, &userSession) {
+			if !userSession.IsAnonymous() {
+				ctx.Logger.WithFields(map[string]any{"username": userSession.Username, "group": ctx.Configuration.Administration.AdminGroup}).Warn("Access to the administration API was denied as the user is not a member of the administrator group")
+			}
+
+			replyAdminNotFound(ctx)
 
 			return
 		}
@@ -54,17 +107,13 @@ func RequireAdmin(next RequestHandler) RequestHandler {
 			return
 		}
 
-		if !IsAdministrator(ctx, &userSession) {
-			ctx.Logger.WithFields(map[string]any{"username": userSession.Username, "group": ctx.Configuration.Administration.AdminGroup}).Warn("Access to the administration API was denied as the user is not a member of the administrator group")
-
-			ctx.SetStatusCode(fasthttp.StatusForbidden)
-			ctx.SetJSONError("You are not an administrator.")
-
-			return
-		}
-
 		next(ctx)
 	}
+}
+
+func replyAdminNotFound(ctx *AutheliaCtx) {
+	ctx.SetStatusCode(fasthttp.StatusNotFound)
+	ctx.SetJSONError(fasthttp.StatusMessage(fasthttp.StatusNotFound))
 }
 
 // AdminConfirmationExpires returns when the second factor confirmation of the user session stops granting access to the

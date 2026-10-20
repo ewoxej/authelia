@@ -28,6 +28,10 @@ type configurationBody struct {
 	PasswordChangeDisabled bool       `json:"password_change_disabled"`
 	PasswordResetDisabled  bool       `json:"password_reset_disabled"`
 	Administrator          bool       `json:"administrator"`
+
+	// AdministrationURL is where an administrator opens the administration area when it's only available on its own
+	// endpoint. It's only given to administrators.
+	AdministrationURL string `json:"administration_url,omitempty"`
 }
 
 type bodySignTOTPRequest struct {

@@ -18,7 +18,7 @@ import {
 } from "@constants/Routes";
 import { useRouterNavigate } from "@hooks/RouterNavigate";
 import { useAutheliaState } from "@hooks/State";
-import { AdminOverview, AdminRequestError, getAdminOverview } from "@services/Admin";
+import { AdminOverview, AdminRequestError, getAdminOverview, getAdminSession } from "@services/Admin";
 import { AuthenticationLevel } from "@services/State";
 import ActivityView from "@views/Admin/Activity/ActivityView";
 import AdminLayout from "@views/Admin/AdminLayout";
@@ -30,6 +30,8 @@ import ConfigurationView from "@views/Admin/Configuration/ConfigurationView";
 import OverviewView from "@views/Admin/Overview/OverviewView";
 import UserDetailView from "@views/Admin/Users/UserDetailView";
 import UsersView from "@views/Admin/Users/UsersView";
+import LoadingPage from "@views/LoadingPage/LoadingPage";
+import NotFound from "@views/NotFound/NotFound";
 
 const AdminRouter = function () {
     const navigate = useRouterNavigate();
@@ -46,9 +48,29 @@ const AdminRouter = function () {
         }
     }, [state, fetchStateError, navigate]);
 
+    // Whether the administration area is there for the user at all: to anyone who isn't an administrator, or outside
+    // its endpoint, it's a page which doesn't exist.
+    const [access, setAccess] = useState<"allowed" | "checking" | "missing">("checking");
+
+    useEffect(() => {
+        if (!state || state.authentication_level < AuthenticationLevel.OneFactor) return;
+
+        getAdminSession()
+            .then(() => setAccess("allowed"))
+            .catch((err) => setAccess(err instanceof AdminRequestError && err.status === 404 ? "missing" : "allowed"));
+    }, [state]);
+
     const [generation, setGeneration] = useState(0);
 
     const requireElevation = useCallback(() => setGeneration((g) => g + 1), []);
+
+    if (access === "missing") {
+        return <NotFound />;
+    }
+
+    if (access === "checking") {
+        return <LoadingPage />;
+    }
 
     return (
         <AdminLayout overview={overview}>

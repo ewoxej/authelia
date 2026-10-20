@@ -117,7 +117,17 @@ administration:
     - '/secrets'
   # Don't restart after configuration changes; they're applied on the next manual restart.
   disable_restart: false
+  # Only serve the administration area on this address, i.e. a host only reachable from the local network. Elsewhere
+  # it doesn't exist. It has to be on the domain of a session cookie.
+  endpoint: 'https://idm-admin.example.com'
 ```
+
+The administration area only exists for members of the administrator group: everyone else, and every address other
+than the endpoint when one is set, gets a page which isn't found.
+
+With an endpoint, both the `Host` header and `X-Forwarded-Host` have to name it, so the proxy must pass the host through
+and replace an `X-Forwarded-Host` sent by the client, which Traefik does by default. The endpoint itself is best
+restricted by the proxy, i.e. to local addresses.
 
 Administrators must have a second factor configured. The configuration files have to be writable by the process for
 the configuration forms to save.

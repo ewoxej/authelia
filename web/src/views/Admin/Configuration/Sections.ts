@@ -1165,6 +1165,16 @@ export const sections: SectionDef[] = [
             },
             {
                 description:
+                    "The address the administration area is only available on, i.e. a host only reachable from the local network. Empty makes it available on every address of the portal. It can only be changed in the file on the server.",
+                kind: "text",
+                label: "Endpoint",
+                locked: true,
+                path: "administration.endpoint",
+                placeholder: "https://idm-admin.example.com",
+                wide: true,
+            },
+            {
+                description:
                     "The directories the file picker can browse and new secrets can be read from. Empty uses the directories of the configuration files. It can only be changed in the file on the server.",
                 kind: "list",
                 label: "File picker directories",

@@ -241,7 +241,7 @@ html[data-admin-theme] body {
 }
 
 .adm .side {
-    flex: 0 0 248px;
+    flex: 0 0 256px;
     position: sticky;
     top: var(--a-head, 71px);
     align-self: flex-start;
@@ -277,6 +277,8 @@ html[data-admin-theme] body {
     display: flex;
     align-items: center;
     gap: 11px;
+    /* the current item is bold, so a label that fits shouldn't wrap there either */
+    white-space: nowrap;
     height: 36px;
     padding: 0 12px;
     border-radius: 9px;

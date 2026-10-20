@@ -6,6 +6,7 @@ package middlewares_test
 
 import (
 	"encoding/json"
+	"net/url"
 	"testing"
 	"time"
 
@@ -125,6 +126,70 @@ func TestRequireAdminSameOrigin(t *testing.T) {
 			})(mock.Ctx)
 
 			assert.Equal(t, tc.expected == fasthttp.StatusOK, called)
+			assert.Equal(t, tc.expected, mock.Ctx.Response.StatusCode())
+		})
+	}
+}
+
+func TestRequireAdmin(t *testing.T) {
+	testCases := []struct {
+		name      string
+		endpoint  string
+		host      string
+		forwarded string
+		groups    []string
+		twoFactor bool
+		expected  int
+	}{
+		{"ShouldPassAdministrator", "", "idm.example.com", "", []string{"admins"}, true, fasthttp.StatusOK},
+		{"ShouldHideFromOtherUsers", "", "idm.example.com", "", []string{"dev"}, true, fasthttp.StatusNotFound},
+		{"ShouldHideFromOtherUsersWithoutSecondFactor", "", "idm.example.com", "", []string{"dev"}, false, fasthttp.StatusNotFound},
+		{"ShouldRequireSecondFactorFromAdministrator", "", "idm.example.com", "", []string{"admins"}, false, fasthttp.StatusForbidden},
+		{"ShouldPassOnEndpoint", "https://idm-admin.example.com", "idm-admin.example.com", "", []string{"admins"}, true, fasthttp.StatusOK},
+		{"ShouldPassOnEndpointWithDefaultPort", "https://idm-admin.example.com", "idm-admin.example.com:443", "", []string{"admins"}, true, fasthttp.StatusOK},
+		{"ShouldHideOutsideEndpoint", "https://idm-admin.example.com", "idm.example.com", "", []string{"admins"}, true, fasthttp.StatusNotFound},
+		{"ShouldHideWithOnlyForwardedHostOnEndpoint", "https://idm-admin.example.com", "idm.example.com", "idm-admin.example.com", []string{"admins"}, true, fasthttp.StatusNotFound},
+		{"ShouldHideWithOnlyHostOnEndpoint", "https://idm-admin.example.com", "idm-admin.example.com", "idm.example.com", []string{"admins"}, true, fasthttp.StatusNotFound},
+		{"ShouldHideOnOtherPort", "https://idm-admin.example.com:8443", "idm-admin.example.com", "", []string{"admins"}, true, fasthttp.StatusNotFound},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := mocks.NewMockAutheliaCtx(t)
+
+			defer mock.Close()
+
+			mock.Ctx.Configuration.Administration.Enabled = true
+			mock.Ctx.Configuration.Administration.AdminGroup = "admins"
+
+			if tc.endpoint != "" {
+				endpoint, err := url.Parse(tc.endpoint)
+				require.NoError(t, err)
+
+				mock.Ctx.Configuration.Administration.Endpoint = endpoint
+			}
+
+			// The proxy forwards the host it was asked for unless a case says otherwise.
+			forwarded := tc.forwarded
+			if forwarded == "" {
+				forwarded = tc.host
+			}
+
+			mock.Ctx.Request.Header.SetHost(tc.host)
+			mock.Ctx.Request.Header.Set(fasthttp.HeaderXForwardedHost, forwarded)
+
+			userSession, err := mock.Ctx.GetSession()
+			require.NoError(t, err)
+
+			userSession.Username = john
+			userSession.Groups = tc.groups
+			userSession.AuthenticationMethodRefs.UsernameAndPassword = true
+			userSession.AuthenticationMethodRefs.WebAuthn = tc.twoFactor
+
+			require.NoError(t, mock.Ctx.SaveSession(userSession))
+
+			middlewares.RequireAdmin(NilHandler)(mock.Ctx)
+
 			assert.Equal(t, tc.expected, mock.Ctx.Response.StatusCode())
 		})
 	}

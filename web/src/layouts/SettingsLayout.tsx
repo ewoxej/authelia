@@ -88,6 +88,15 @@ const SettingsLayout = function (props: Props) {
         document.title = translate("Settings - {{authelia}}", { authelia: BrandName });
     }, [translate]);
 
+    // The administration area may only be available on its own endpoint, which is another site to go to.
+    const openAdministration = (url?: string) => {
+        if (url && new URL(url).host !== globalThis.location.host) {
+            globalThis.location.assign(url);
+        } else {
+            navigate(AdminRoute);
+        }
+    };
+
     const current = (pathname: string) => location.pathname === pathname || location.pathname === pathname + "/";
     const active = navItems.find((item) => current(item.pathname));
 
@@ -128,7 +137,7 @@ const SettingsLayout = function (props: Props) {
                                 id="settings-menu-administration"
                                 type="button"
                                 className="nav"
-                                onClick={() => navigate(AdminRoute)}
+                                onClick={() => openAdministration(configuration.administration_url)}
                             >
                                 <SlidersHorizontal {...iconProps} />
                                 {translate("Administration", { ns: "admin" })}
